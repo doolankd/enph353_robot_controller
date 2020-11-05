@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="get_image.py"
+    name="get_image"
+    output="screen">
+  </node>
+</launch>
