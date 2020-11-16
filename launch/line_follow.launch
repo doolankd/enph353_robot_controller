@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="line_follow.py"
+    name="line_follow"
+    output="screen">
+  </node>
+</launch>
