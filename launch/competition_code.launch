@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="competition_code.py"
+    name="competition_code"
+    output="screen">
+  </node>
+</launch>
