@@ -21,9 +21,9 @@ d_history = [0,0,0,0,0]
 
 #DETECTION INTERUPT VARIABLES:
 
-green_line_hold = False
-loops_since_green_line = 10000 #starter dummy value to start cycle
-min_loops_away_from_line = 30
+blue_car_hold = False
+loops_since_blue_car = 10000 #starter dummy value to start cycle
+min_loops_away_from_car = 1000
 
 def get_center(img):
 	y_val = 700
@@ -31,13 +31,14 @@ def get_center(img):
 	global img_width
 	img_width = width
 	sub_img = img[y_val][:][:]
+	sub_img_future = img[400][:][:]
 
 	grey_Lth = 75
 	grey_Uth = 95
 
-	light_green_b = 117
-	light_green_g = 127
-	light_green_r = 110
+	blue_car_b = 121
+	blue_car_g = 19
+	blue_car_r = 19
 
 	started = False
 	check_range = 5
@@ -45,8 +46,8 @@ def get_center(img):
 	start_index = None
 	midpoint_road = None
 
-	light_green_count=0
-	light_green_detected = False
+	blue_car_count=0
+	blue_car_detected = False
 
 	noise_list = []
 
@@ -55,13 +56,17 @@ def get_center(img):
 		g = sub_img[i][1]
 		r = sub_img[i][2]
 
-		if (b > light_green_b - 30 and b < light_green_b + 30 and
-      		g > light_green_g - 30 and g < light_green_g + 30 and
-      		r > light_green_r - 30 and r < light_green_r + 30):
+		b_future = sub_img_future[i][0]
+		g_future = sub_img_future[i][1]
+		r_future = sub_img_future[i][2]
+
+		if (b_future > blue_car_b - 10 and b_future < blue_car_b + 10 and
+      		g_future > blue_car_g - 10 and g_future < blue_car_g + 10 and
+      		r_future > blue_car_r - 10 and r_future < blue_car_r + 10):
     			#light_green_index = i
-    			light_green_count+=1
-    			if light_green_count == 10:
-    				light_green_detected = True
+    			blue_car_count+=1
+    			if blue_car_count == 1:
+    				blue_car_detected = True
       				break
 
 		if (b > grey_Lth and b < grey_Uth and 
@@ -147,7 +152,7 @@ def get_center(img):
 	  	midpoint_road = int((stop_index + start_index) / 2)
 	  	road_detected = True
 
-	return midpoint_road, road_detected, light_green_detected
+	return midpoint_road, road_detected, blue_car_detected
 
 def follow_line(midpoint_road,road_detected):
 
@@ -230,26 +235,26 @@ def follow_line(midpoint_road,road_detected):
 
 def callback_image(img):
 
-	global green_line_hold
-	global loops_since_green_line
+	global blue_car_hold
+	global loops_since_blue_car
 
 	cv_image = bridge.imgmsg_to_cv2(img, "bgr8") #image robot sees
-	midpoint_road, road_detected, light_green_detected = get_center(img=cv_image)
-	print(light_green_detected, green_line_hold)
-	if green_line_hold:
-		if light_green_detected and loops_since_green_line > min_loops_away_from_line:
-			green_line_hold = False
-			loops_since_green_line = 0
+	midpoint_road, road_detected, blue_car_detected = get_center(img=cv_image)
+	print(blue_car_detected, blue_car_hold)
+	if blue_car_hold:
+		if blue_car_detected and loops_since_blue_car > min_loops_away_from_car:
+			blue_car_hold = False
+			loops_since_blue_car = 0
 		move.linear.x = nominal_speed
 		move.angular.z = 0
-		loops_since_green_line+=1
+		loops_since_blue_car+=1
 
-	elif light_green_detected and loops_since_green_line > min_loops_away_from_line:
+	elif blue_car_detected and loops_since_blue_car > min_loops_away_from_car:
 		move.linear.x = nominal_speed
 		move.angular.z = 0
 
-		green_line_hold = True
-		loops_since_green_line = 0
+		blue_car_hold = True
+		loops_since_blue_car = 0
 	#added all this stuff above.
 	else: 
 		follow_line(midpoint_road,road_detected)
