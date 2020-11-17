@@ -215,9 +215,11 @@ def callback_control(cmd):
 
 	global control_robot
 
+	#extract original string from data
 	cmd = str(cmd.data)
-	print(cmd)
+	#print(cmd)
 	
+	#flag for telling robot when to start and stop being controlled
 	if cmd == "start":
 		control_robot = True
 		#print(control_robot)
@@ -234,14 +236,15 @@ def callback_image(img):
 	#print(control_robot)
 
 	if control_robot:
-		#print("in here")
+		#this should only execute once competition starts
 
 		cv_image = bridge.imgmsg_to_cv2(img, "bgr8") #image robot sees
-		midpoint_road, road_detected = get_center(img=cv_image)
+		midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road
 
-		follow_line(midpoint_road,road_detected)
+		follow_line(midpoint_road,road_detected) #does PID control of robot
 
 	else:
+		#this should only execute once competition ends
 		move.angular.z = 0
 		move.linear.x = 0
 

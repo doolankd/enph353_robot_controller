@@ -59,7 +59,7 @@ def callback_time(data):
 
 	# print speed every second
 	if time_seconds != prev_time:
-		print(time_seconds)
+		#print(time_seconds)
 		prev_time = time_seconds
 
 	#move.angular.z = angular_vel
