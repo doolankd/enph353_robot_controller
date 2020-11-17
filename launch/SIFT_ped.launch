@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="SIFT_ped.py"
+    name="SIFT_ped"
+    output="screen">
+  </node>
+</launch>
