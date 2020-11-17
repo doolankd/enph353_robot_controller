@@ -1,0 +1,6 @@
+<launch>
+<include file="$(find my_controller)/launch/competition_code.launch">
+</include>
+<include file="$(find my_controller)/launch/line_follow.launch">
+</include>
+</launch>

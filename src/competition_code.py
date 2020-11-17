@@ -40,9 +40,10 @@ def callback_time(data):
 
 	# begin competition
 	if time_seconds == start_time and run_once == 0:
-		angular_vel = 2
+		#angular_vel = 2
 		license_publishing("0","XR58") # the license plate digits are filler, don't mean anything
 		run_once = 1
+		control_pub.publish("start")
 
 	# test sending license plates
 	if time_seconds == start_time + 30 and run_once == 1:
@@ -51,17 +52,18 @@ def callback_time(data):
 
 	# end competition
 	if time_seconds == end_time and run_once == 0:
-		angular_vel = 0
+		#angular_vel = 0
+		control_pub.publish("stop")
 		license_publishing("-1","XR58") # the license plate digits are filler, don't mean anything
 		run_once = 1
 
 	# print speed every second
 	if time_seconds != prev_time:
-		print(angular_vel)
+		print(time_seconds)
 		prev_time = time_seconds
 
-	move.angular.z = angular_vel
-	velocity_pub.publish(move)
+	#move.angular.z = angular_vel
+	#velocity_pub.publish(move)
 
 '''
 The string you send must contain the following comma separated values:
@@ -92,6 +94,7 @@ bridge = CvBridge()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)
 time_sub = rospy.Subscriber('/clock',String,callback_time)
 license_plate_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
+control_pub = rospy.Publisher('/control',String,queue_size = 1)
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
 move = Twist()
 rospy.spin()

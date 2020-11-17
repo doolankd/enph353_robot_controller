@@ -6,12 +6,13 @@ import time
 
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 
 #PID VARIABLES:
 
 middle_screen_margin = 50
-nominal_speed = 0.1
+nominal_speed = 0.06
 max_turn_speed = 1
 
 img_width = 0
@@ -19,11 +20,9 @@ previous_error = 0
 
 d_history = [0,0,0,0,0]
 
-#DETECTION INTERUPT VARIABLES:
+control_robot = False
 
-green_line_hold = False
-loops_since_green_line = 10000 #starter dummy value to start cycle
-min_loops_away_from_line = 30
+#DETECTION INTERUPT VARIABLES:
 
 def get_center(img):
 	y_val = 700
@@ -35,18 +34,11 @@ def get_center(img):
 	grey_Lth = 75
 	grey_Uth = 95
 
-	light_green_b = 117
-	light_green_g = 127
-	light_green_r = 110
-
 	started = False
 	check_range = 5
 	stop_index = None
 	start_index = None
 	midpoint_road = None
-
-	light_green_count=0
-	light_green_detected = False
 
 	noise_list = []
 
@@ -54,15 +46,6 @@ def get_center(img):
 		b = sub_img[i][0]
 		g = sub_img[i][1]
 		r = sub_img[i][2]
-
-		if (b > light_green_b - 30 and b < light_green_b + 30 and
-      		g > light_green_g - 30 and g < light_green_g + 30 and
-      		r > light_green_r - 30 and r < light_green_r + 30):
-    			#light_green_index = i
-    			light_green_count+=1
-    			if light_green_count == 10:
-    				light_green_detected = True
-      				break
 
 		if (b > grey_Lth and b < grey_Uth and 
 		g > grey_Lth and g < grey_Uth and 
@@ -147,7 +130,7 @@ def get_center(img):
 	  	midpoint_road = int((stop_index + start_index) / 2)
 	  	road_detected = True
 
-	return midpoint_road, road_detected, light_green_detected
+	return midpoint_road, road_detected
 
 def follow_line(midpoint_road,road_detected):
 
@@ -228,31 +211,39 @@ def follow_line(midpoint_road,road_detected):
 
 		previous_error = img_width / 2 #give some max value when randomly turning fast
 
+def callback_control(cmd):
+
+	global control_robot
+
+	cmd = str(cmd.data)
+	print(cmd)
+	
+	if cmd == "start":
+		control_robot = True
+		#print(control_robot)
+	elif cmd == "stop":
+		control_robot = False
+		#print(control_robot)
+	else:
+		print("skipped")
+
 def callback_image(img):
 
-	global green_line_hold
-	global loops_since_green_line
+	global control_robot
 
-	cv_image = bridge.imgmsg_to_cv2(img, "bgr8") #image robot sees
-	midpoint_road, road_detected, light_green_detected = get_center(img=cv_image)
-	print(light_green_detected, green_line_hold)
-	if green_line_hold:
-		if light_green_detected and loops_since_green_line > min_loops_away_from_line:
-			green_line_hold = False
-			loops_since_green_line = 0
-		move.linear.x = nominal_speed
-		move.angular.z = 0
-		loops_since_green_line+=1
+	#print(control_robot)
 
-	elif light_green_detected and loops_since_green_line > min_loops_away_from_line:
-		move.linear.x = nominal_speed
-		move.angular.z = 0
+	if control_robot:
+		#print("in here")
 
-		green_line_hold = True
-		loops_since_green_line = 0
-	#added all this stuff above.
-	else: 
+		cv_image = bridge.imgmsg_to_cv2(img, "bgr8") #image robot sees
+		midpoint_road, road_detected = get_center(img=cv_image)
+
 		follow_line(midpoint_road,road_detected)
+
+	else:
+		move.angular.z = 0
+		move.linear.x = 0
 
 	velocity_pub.publish(move)
 
@@ -262,4 +253,5 @@ bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
 move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/rrbot/camera1/image_raw', Image,callback_image)
+control_sub = rospy.Subscriber('/control',String,callback_control)
 rospy.spin()
