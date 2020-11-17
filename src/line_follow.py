@@ -21,6 +21,7 @@ previous_error = 0
 d_history = [0,0,0,0,0]
 
 control_robot = False
+prev_control = False # added by Ken
 
 #DETECTION INTERUPT VARIABLES:
 
@@ -232,6 +233,7 @@ def callback_control(cmd):
 def callback_image(img):
 
 	global control_robot
+	global prev_control
 
 	#print(control_robot)
 
@@ -243,13 +245,16 @@ def callback_image(img):
 
 		follow_line(midpoint_road,road_detected) #does PID control of robot
 
+		prev_control = True
+		velocity_pub.publish(move)
 	else:
-		#this should only execute once competition ends
-		move.angular.z = 0
-		move.linear.x = 0
-
-	velocity_pub.publish(move)
-
+		if prev_control == True:
+			#this should only execute once competition ends
+			move.angular.z = 0
+			move.linear.x = 0
+			velocity_pub.publish(move)
+		else:
+			prev_control = False
 
 rospy.init_node('control_node')
 bridge = CvBridge()
