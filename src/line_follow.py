@@ -168,6 +168,8 @@ def follow_line(midpoint_road,road_detected):
 			calibrated_prev_error = (-1)*previous_error
 			#do this since angular.z turns right for negative vals
 
+			#move.angular.z > 0 turns left
+
 			#compute d
 			d = calibrated_error - calibrated_prev_error
 			#add new d to history
@@ -214,6 +216,7 @@ def follow_line(midpoint_road,road_detected):
 def callback_control(cmd):
 
 	global control_robot
+	global comp_start_time
 
 	#extract original string from data
 	cmd = str(cmd.data)
@@ -222,6 +225,7 @@ def callback_control(cmd):
 	#flag for telling robot when to start and stop being controlled
 	if cmd == "start":
 		control_robot = True
+		comp_start_time = rospy.get_time()
 		#print(control_robot)
 	elif cmd == "stop":
 		control_robot = False
@@ -232,16 +236,28 @@ def callback_control(cmd):
 def callback_image(img):
 
 	global control_robot
+	global comp_start_time
 
 	#print(control_robot)
 
 	if control_robot:
+
+		if rospy.get_time() - comp_start_time < 2.5:
+			#**************************************************
+			#NOTE: THESE VALUES ARE FOR A nominal_speed of 0.06
+			#**************************************************
+			move.angular.z = 0.2
+			move.linear.x = 0.1
+			#gets robot to turn left once competition starts
+
 		#this should only execute once competition starts
 
-		cv_image = bridge.imgmsg_to_cv2(img, "bgr8") #image robot sees
-		midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road
+		else:
 
-		follow_line(midpoint_road,road_detected) #does PID control of robot
+			cv_image = bridge.imgmsg_to_cv2(img, "bgr8") #image robot sees
+			midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road
+
+			follow_line(midpoint_road,road_detected) #does PID control of robot
 
 	else:
 		#this should only execute once competition ends
