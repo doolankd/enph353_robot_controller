@@ -310,22 +310,16 @@ def detect_red_line(original_image):
 	height, width, shape = hsv_img.shape
 	sub_img = hsv_img[Y_LEVEL][:][:]
 
-	red_count = 0
-	for i in range(width):
-		h = sub_img[i][0]
-		s = sub_img[i][1]
-		v = sub_img[i][2]
 
-		if (h >= lower_red[0] and h <= upper_red[0] and
-			s >= lower_red[1] and v >= lower_red[2]):
-			red_count+=1
+	h = sub_img[int(width/2)][0]
+	s = sub_img[int(width/2)][1]
+	v = sub_img[int(width/2)][2]
 
-		if red_count == 20:
-			red_line_detected = True
-			red_count = 0
-			break
-		else:
-			red_line_detected = False
+	if (h >= lower_red[0] and h <= upper_red[0] and
+		s >= lower_red[1] and v >= lower_red[2]):
+		red_line_detected = True
+	else:
+		red_line_detected = False
 	return red_line_detected
 
 
