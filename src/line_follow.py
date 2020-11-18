@@ -299,6 +299,36 @@ def detect_blue_car(original_image,blue_detected_previous):
 
 	return blue_car_detected
 
+def detect_red_line(original_image):
+
+	Y_LEVEL = 700
+
+	lower_red = np.array([0,50,50])
+	upper_red = np.array([10,255,255])
+
+	hsv_img = cv2.cvtColor(original_image, cv2.COLOR_BGR2HSV)
+	height, width, shape = hsv_img.shape
+	sub_img = hsv_img[Y_LEVEL][:][:]
+
+	red_count = 0
+	for i in range(width):
+		h = sub_img[i][0]
+		s = sub_img[i][1]
+		v = sub_img[i][2]
+
+		if (h >= lower_red[0] and h <= upper_red[0] and
+			s >= lower_red[1] and v >= lower_red[2]):
+			red_count+=1
+
+		if red_count == 20:
+			red_line_detected = True
+			red_count = 0
+			break
+		else:
+			red_line_detected = False
+	return red_line_detected
+
+
 def callback_control(cmd):
 
 	global control_robot
@@ -330,10 +360,10 @@ def callback_image(img):
 
 	if control_robot:
 
+		#*************************************************************
+
 		if rospy.get_time() - comp_start_time < 1:
-			#**************************************************
-			#NOTE: THESE VALUES ARE FOR A nominal_speed of 0.06
-			#**************************************************
+
 			move.angular.z = 0.0
 			move.linear.x = 0.3
 		elif rospy.get_time() - comp_start_time < 2.0:
@@ -343,15 +373,23 @@ def callback_image(img):
 			move.linear.x = 0
 			#gets robot to turn left once competition starts
 
-		#this should only execute once competition starts
+		#the above block should only execute once when the competition starts
+		#*************************************************************
 
 		else:
 
 			cv_image = bridge.imgmsg_to_cv2(img, "bgr8")#image robot sees
+
+			red_line_detected = detect_red_line(cv_image)
+
 			#print(blue_car_detected)
 			if blue_car_detected:
 				move.angular.z = 0
 				move.linear.x = nominal_speed
+
+			elif red_line_detected:
+				move.angular.z = 0
+				move.linear.x = 0
 
 			else:
 				midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road			
