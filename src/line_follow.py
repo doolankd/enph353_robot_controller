@@ -163,7 +163,7 @@ def follow_line(midpoint_road,road_detected):
 	if road_detected:
 
 		error = (img_width / 2 - midpoint_road)/10
-		print("error: ", error)
+		#print("error: ", error)
 
 		if abs(error) <= middle_screen_margin:
 			move.linear.x = nominal_speed
@@ -368,7 +368,7 @@ def callback_image(img):
 		move.angular.z = 0
 		move.linear.x = 0
 
-	print(move.angular.z)
+	#print(move.angular.z)
 	velocity_pub.publish(move)
 
 
