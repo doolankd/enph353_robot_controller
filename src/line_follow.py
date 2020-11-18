@@ -163,7 +163,7 @@ def follow_line(midpoint_road,road_detected):
 	if road_detected:
 
 		error = (img_width / 2 - midpoint_road)/10
-		print("error: ", error)
+		#print("error: ", error)
 
 		if abs(error) <= middle_screen_margin:
 			move.linear.x = nominal_speed
@@ -235,7 +235,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 	global time_detected_blue_car
 	global blue_running_time
 	global first_pass
-	TIME_LIMIT = 1
+	TIME_LIMIT = 1.5
 
 	lower_blue = np.array([110,50,50])
 	upper_blue = np.array([130,255,255])
@@ -330,12 +330,17 @@ def callback_image(img):
 
 	if control_robot:
 
-		if rospy.get_time() - comp_start_time < 2.5:
+		if rospy.get_time() - comp_start_time < 1:
 			#**************************************************
 			#NOTE: THESE VALUES ARE FOR A nominal_speed of 0.06
 			#**************************************************
-			move.angular.z = 0.1
-			move.linear.x = 0.1
+			move.angular.z = 0.0
+			move.linear.x = 0.3
+		elif rospy.get_time() - comp_start_time < 2.0:
+
+
+			move.angular.z = 1
+			move.linear.x = 0
 			#gets robot to turn left once competition starts
 
 		#this should only execute once competition starts
@@ -363,7 +368,7 @@ def callback_image(img):
 		move.angular.z = 0
 		move.linear.x = 0
 
-	print(move.angular.z)
+	#print(move.angular.z)
 	velocity_pub.publish(move)
 
 
