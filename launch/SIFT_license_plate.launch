@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="SIFT_license_plate.py"
+    name="SIFT_license_plate"
+    output="screen">
+  </node>
+</launch>
