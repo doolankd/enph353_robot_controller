@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="SIFT_LP_test_gather_data.py"
+    name="SIFT_LP_test_gather_data"
+    output="screen">
+  </node>
+</launch>
