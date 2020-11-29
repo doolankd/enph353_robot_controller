@@ -22,6 +22,7 @@ previous_error = 0
 d_history = [0,0,0,0,0]
 
 control_robot = False
+prev_control = False # added by Ken
 
 #DETECTION INTERUPT VARIABLES:
 
@@ -363,6 +364,8 @@ def callback_image(img):
 			else:
 				blue_car_detected = False
 
+		prev_control = True
+		velocity_pub.publish(move)
 	else:
 		#this should only execute once competition ends
 		move.angular.z = 0
@@ -370,7 +373,6 @@ def callback_image(img):
 
 	#print(move.angular.z)
 	velocity_pub.publish(move)
-
 
 rospy.init_node('control_node')
 bridge = CvBridge()
