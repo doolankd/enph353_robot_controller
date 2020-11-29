@@ -21,7 +21,7 @@ TRUE = 1
 image_front = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/black_far_P_GOOD.png" 
 write_location = "/home/fizzer/NN_pics/" #"/home/fizzer/ros_ws/src/my_controller/pictures/NN_Training/"
 files_written = 0
-files_written_max = 100
+files_written_max = 120
 dist_scale_front = 0.8 # 0.7
 positive_match = 4 # 4
 
@@ -38,6 +38,7 @@ centroid_avg_error = 25
 prev_x = 0
 prev_y = 0
 prev_match = FALSE
+prev_prev_match = FALSE
 
 sim_time_seconds = 0
 
@@ -50,6 +51,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	global prev_x
 	global prev_y
 	global prev_match
+	global prev_prev_match
 	global files_written
 
 	reserved_frame = np.copy(robot_frame)
@@ -312,7 +314,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		match = FALSE
 
 	# we have found the centroid of P, will now draw a box to the right of the centroid to try to capture the stall number
-	if len(X_centroid_list) != 0 and match and prev_match:
+	if len(X_centroid_list) != 0 and match and prev_match and prev_prev_match:
 		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
 		y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
 
@@ -344,7 +346,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		# roslaunch my_controller SIFT_stall_num_gather_data.launch
 
 		if files_written < files_written_max:
-			cv2.imwrite(write_location + "{}_5".format(sim_time_seconds) + ".png", frame_threshold)
+			cv2.imwrite(write_location + "{}_6".format(sim_time_seconds) + ".png", frame_threshold)
 			files_written = files_written + 1
 
 		print("files_written: " + str(files_written))
@@ -405,6 +407,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	'''
 	
 	prev_match = match
+	prev_prev_match = prev_match
 	#return match
 	return 5
 
