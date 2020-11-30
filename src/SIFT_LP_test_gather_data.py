@@ -38,6 +38,7 @@ centroid_avg_error = 25
 prev_x = 0
 prev_y = 0
 prev_match = FALSE
+prev_prev_match = FALSE
 
 sim_time_seconds = 0
 
@@ -50,6 +51,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	global prev_x
 	global prev_y
 	global prev_match
+	global prev_prev_match
 	global files_written
 
 	sift = cv2.xfeatures2d.SIFT_create()
@@ -66,12 +68,10 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	cv2.waitKey(1)
 
 	#cv2.imshow("normal",robot_frame)
-	#cv2.waitKey(1)
+	#cv2.waitKey(1)	
 
-	#'''	
-
-	# roslaunch my_controller SIFT_license_plate.launch
-	# ./run_sim.sh -vpg
+	# roslaunch my_controller SIFT_LP_test_gather_data.launch
+	# ./run_sim.sh -vpg	
 
 	# Camera Robot Frame - get keypoints and descriptors
 	kp_frame, desc_frame = sift.detectAndCompute(frame, None)
@@ -86,7 +86,6 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	flann = cv2.FlannBasedMatcher(index_params, search_params)
 	matches = flann.knnMatch(desc_image, desc_frame, k=2)
 
-	#'''
 	good_points = []
 	for m, n in matches:
 		# to avoid many false results, take descriptors that have short distances between them
@@ -146,8 +145,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 					X_centroid_list.append(x_centroid)
 					Y_centroid_list.append(y_centroid)
 					print(" ")
-					print(str(x_centroid_avg) + " " + str(y_centroid_avg))
-
+					print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
 				else:
 					# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
 					new_list1 = []
@@ -165,7 +163,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		prev_x = x_centroid
 		prev_y = y_centroid
 
-		print(str(x_centroid) + " " + str(y_centroid))
+		print("vals: " + str(x_centroid) + " " + str(y_centroid))
 		print(" ")
 		print("number of good points: " + str(len(good_points)))
 		
@@ -180,7 +178,18 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		#cv2.imshow("Homography", homography)
 		#cv2.waitKey(1)
 
-		# new idea - afterwards, compute all this outside this big loop, so that we can deal with averages
+		# roslaunch my_controller SIFT_LP_test_gather_data.launch
+
+	else:
+		match = FALSE
+
+	# we got the centroid of the p homography
+	# will now try to capture the license plate using the centroid of P
+	# remember to use the offsets from our earlier crop
+
+	if len(X_centroid_list) != 0 and match and prev_match and prev_prev_match:
+		
+		# new idea
 		# real frame x,y centroid coordinates
 		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list)) + X_crop_left
 		y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list)) + Y_crop_top
@@ -195,28 +204,17 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 
 		box_frame = robot_frame[box_upper_left_corner_Y:box_height+box_upper_left_corner_Y,box_upper_left_corner_X:box_width+box_upper_left_corner_X,0:3].copy()
 		box_frame_clean = robot_frame[box_upper_left_corner_Y:box_height+box_upper_left_corner_Y,box_upper_left_corner_X:box_width+box_upper_left_corner_X,0:3].copy()
-		#cv2.imshow("crop", box_frame)
-		#cv2.waitKey(1)
-		#print(box_frame[50,50,0]) #105
-		#print(box_frame[45,90,0]) #105
-		#gray_box_frame = cv2.cvtColor(box_frame, cv2.COLOR_BGR2GRAY)
-		#cv2.imshow("gray", gray_box_frame)
-		#cv2.waitKey(1)
 
+		# transform image space to HSV - use Miti's script (HSV_thresh_script.py) to find good hsv values
 		hsv_box_frame = cv2.cvtColor(box_frame, cv2.COLOR_BGR2HSV)
-		# using 50 - 110 captures the British columbia and the flag of the plate
 		low_hsv = np.array([100,29,0])			#45,107
 		high_hsv = np.array([109,53,183])
 		gray_mask = cv2.inRange(hsv_box_frame,low_hsv,high_hsv)
 		edges = cv2.Canny(gray_mask,75,150) #75, 150
 
-		# roslaunch my_controller SIFT_license_plate.launch
+		# roslaunch my_controller SIFT_LP_test_gather_data.launch
 		# ./run_sim.sh -vpg
 		# cd ~/ros_ws/src/2020T1_competition/enph353/enph353_utils/scripts
-
-		cv2.imshow("edges", edges)
-		cv2.waitKey(1)
-		#print(edges)
 
 		# since the screen is black, and only white for edges
 		indices = np.where(edges != [0])
@@ -240,14 +238,9 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 				left_most_x = current_x
 				left_most_point = point
 
-		#print("left: " + str(left_most_point))
-		#print("right: " + str(right_most_point))
-		#print(indices[0])
-		#print(coordinates)
-
 		# captured the top line!
-		character_height = 25
-		x_shift = 10 #5
+		character_height = 25 # how much we'll drop down to get the bottom of the license plate
+		x_shift = 10 #5 # we'll move this much to the left and right of the captured line
 
 		top_left_point = (left_most_point[0]-x_shift,left_most_point[1])
 		top_right_point = (right_most_point[0]+x_shift,right_most_point[1])
@@ -259,17 +252,19 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		bottom_left_point = (x_bottom_left,y_bottom_left)
 		bottom_right_point = (x_bottom_right,y_bottom_right)
 
+		# drawing the lines on the cropped image
 		line_frame = cv2.line(box_frame,top_left_point,top_right_point,(0,255,0),3)
 		line_frame = cv2.line(box_frame,bottom_left_point,bottom_right_point,(0,255,0),3)
-		cv2.imshow("lines", line_frame)
-		cv2.waitKey(1)
+		#cv2.imshow("lines", line_frame)
+		#cv2.waitKey(1)
 
+		# get all the points again
 		T_R_X, T_R_Y = top_right_point
 		B_R_X, B_R_Y = bottom_right_point
 		T_L_X, T_L_Y = top_left_point
 		B_L_X, B_L_Y = bottom_left_point
 
-		# from my design team code
+		# from my design team code, get max width and height between points
 		widthA = np.sqrt(((B_R_X - B_L_X) ** 2) + ((B_R_Y - B_L_Y) ** 2))
 		widthB = np.sqrt(((T_R_X - T_L_X) ** 2) + ((T_R_Y - T_L_Y) ** 2))
 		maxWidth = min(int(widthA), int(widthB))
@@ -278,7 +273,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		heightB = np.sqrt(((T_L_X - B_L_X) ** 2) + ((T_L_Y - B_L_Y) ** 2))
 		maxHeight = min(int(heightA), int(heightB))
 
-		# code I copied immediately below, subtracted 1 from maxWidth and maxHeight
+		# preparing for perspective transform
 		dst = np.float32([
 			[maxWidth, 0],
 			[maxWidth, maxHeight],
@@ -291,65 +286,26 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 			[T_L_X, T_L_Y],
 			[B_L_X, B_L_Y]])
 
-		
 		# M is the transform matrix: https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/ 
+		# comutes perspective transform given max height and width, and the transform matrix, M
 		M = cv2.getPerspectiveTransform(original_lines, dst)
 		license_plate_frame = cv2.warpPerspective(box_frame_clean, M, (maxWidth, maxHeight))
-
 		cv2.imshow("license plate", license_plate_frame)
 		cv2.waitKey(1)
-		
-		# roslaunch my_controller SIFT_license_plate.launch
 
-	else:
-		match = FALSE
-
-	# we got the centroid of the p homography
-	# will now try to capture the license plate using the centroid of P
-	# remember to use the offsets from our earlier crop
-
-	if len(X_centroid_list) != 0 and match and prev_match:
-		'''
-		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
-		y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
-
-		x_move_left = -30
-		y_move_down = 45
-		license_plate_height = 30
-		license_plate_width = 130
-		# draw rectangle function requires the top-left and bottom-right corner
-		top_left_x = x_centroid_avg + X_crop_left + x_move_left
-		top_left_y = y_centroid_avg + Y_crop_top + y_move_down
-		bottom_right_x = top_left_x + license_plate_width
-		bottom_right_y = top_left_y + license_plate_height
-		'''
-		# M is the transform matrix: https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/ 
-		M = cv2.getPerspectiveTransform(original_lines, dst)
-		license_plate_frame = cv2.warpPerspective(box_frame_clean, M, (maxWidth, maxHeight))
-
-		
+		# write license plate to a new file
 		if files_written < files_written_max:
-			cv2.imwrite(write_location + "{}".format(sim_time_seconds) + ".jpg", license_plate_frame)
+			cv2.imwrite(write_location + "{}".format(sim_time_seconds) + ".png", license_plate_frame)
 			files_written = files_written + 1
+			rospy.sleep(1)
 
 		cv2.imshow("license plate", license_plate_frame)
 		cv2.waitKey(1)
 		print("files_written: " + str(files_written))
 
-		# wait for the image to be processed
-		rospy.sleep(1)
-
-		#license_plate_trace = cv2.rectangle(robot_frame,(top_left_x,top_left_y),(bottom_right_x,bottom_right_y),(0,0,255),3)
-		#cv2.imshow("trace",license_plate_trace)
-		#cv2.waitKey(1)
-	#else:
-		#cv2.imshow("trace",robot_frame)
-		#cv2.waitKey(1)
-	
-	#'''
+	prev_prev_match = prev_match
 	prev_match = match
-	return match
-	#return 5
+	return 5
 
 def callback_image(data):
 	cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
@@ -359,7 +315,6 @@ def callback_time(data):
 	global sim_time_seconds
 	# gets current time in seconds
 	sim_time_seconds = int(str(data)[16:21])
-
 
 # ROS setup stuff below
 rospy.init_node('detect_car_node')

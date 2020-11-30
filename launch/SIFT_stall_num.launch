@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="my_controller"
+    type="SIFT_stall_num.py"
+    name="SIFT_stall_num"
+    output="screen">
+  </node>
+</launch>
