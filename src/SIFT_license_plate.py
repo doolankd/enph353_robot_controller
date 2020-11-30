@@ -19,9 +19,6 @@ FALSE = 0
 TRUE = 1
 
 comparison_img = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/black_far_P_GOOD.png" 
-write_location = "/home/fizzer/NN_pics/" 
-files_written = 0
-files_written_max = 10
 dist_scale_front = 0.8 # 0.7
 positive_match = 4 
 
@@ -38,6 +35,7 @@ centroid_avg_error = 25
 prev_x = 0
 prev_y = 0
 prev_match = FALSE
+prev_prev_match = FALSE
 
 sim_time_seconds = 0
 
@@ -50,7 +48,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	global prev_x
 	global prev_y
 	global prev_match
-	global files_written
+	global prev_prev_match
 
 	sift = cv2.xfeatures2d.SIFT_create()
 	frame = cropImage(X_crop_left,X_crop_right,Y_crop_top,Y_crop_bottom,robot_frame)
@@ -106,7 +104,8 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		# Perspective transforms, helps with homography
 		h, w = img.shape        # height and width of original image
 
-		pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)    # points gets h and w of image. does not work with int32, but float32 works
+		 # points gets h and w of image. does not work with int32, but float32 works
+		pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)
 		dst = cv2.perspectiveTransform(pts, matrix)
 		
 		# homography square corner points
@@ -142,7 +141,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 					X_centroid_list.append(x_centroid)
 					Y_centroid_list.append(y_centroid)
 					print(" ")
-					print(str(x_centroid_avg) + " " + str(y_centroid_avg))
+					print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
 
 				else:
 					# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
@@ -161,7 +160,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		prev_x = x_centroid
 		prev_y = y_centroid
 
-		print(str(x_centroid) + " " + str(y_centroid))
+		print("vals: " + str(x_centroid) + " " + str(y_centroid))
 		print(" ")
 		print("number of good points: " + str(len(good_points)))
 		
@@ -178,9 +177,9 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		match = FALSE
 
 	# once we have populated the centroid list, will now capture license plate and write to a file
-	if len(X_centroid_list) != 0 and match and prev_match:
+	if len(X_centroid_list) != 0 and match and prev_match and prev_prev_match:
 
-		# new idea - afterwards, compute outside this big loop, so that we can deal with averages
+		# new idea
 		# real frame x,y centroid coordinates
 		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list)) + X_crop_left
 		y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list)) + Y_crop_top
@@ -207,9 +206,6 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		# ./run_sim.sh -vpg
 		# cd ~/ros_ws/src/2020T1_competition/enph353/enph353_utils/scripts
 
-		#cv2.imshow("edges", edges)
-		#cv2.waitKey(1)
-		
 		# since the screen is black, and only white for edges
 		indices = np.where(edges != [0])
 		coordinates = zip(indices[1], indices[0])
@@ -284,16 +280,12 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		# comutes perspective transform given max height and width, and the transform matrix, M
 		M = cv2.getPerspectiveTransform(original_lines, dst)
 		license_plate_frame = cv2.warpPerspective(box_frame_clean, M, (maxWidth, maxHeight))
-
-		# write license plate to a new file
-		if files_written < files_written_max:
-			cv2.imwrite(write_location + "{}".format(sim_time_seconds) + ".jpg", license_plate_frame)
-			files_written = files_written + 1
-
 		cv2.imshow("license plate", license_plate_frame)
 		cv2.waitKey(1)
-		print("files_written: " + str(files_written))
 
+		# roslaunch my_controller SIFT_license_plate.launch
+
+	prev_prev_match = prev_match
 	prev_match = match
 	return match
 
@@ -305,7 +297,6 @@ def callback_time(data):
 	global sim_time_seconds
 	# gets current time in seconds
 	sim_time_seconds = int(str(data)[16:21])
-
 
 # ROS setup stuff below
 rospy.init_node('detect_car_node')

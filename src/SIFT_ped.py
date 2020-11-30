@@ -23,11 +23,21 @@ dist_scale_back = 0.85 # 0.7
 dist_scale_front = 0.85 # 0.7
 positive_match = 25 # 6
 
+# roslaunch my_controller SIFT_ped.launch
+
+detect_ped_list = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+detect_thresh = 8
+count = 0
+
 # Cropping variables
 X1 = 550
 X2 = 750
 Y1 = 400
 Y2 = 600
+
+### Need to add publisher and subscriber for integration purposes
+# publisher to tell other programs the status of the pedestrian
+# subscriber to determine when to start running this algorithm program
 
 def cropImage(width_start, width_end, height_start, height_end, frame):
 	return frame[height_start:height_end,width_start:width_end,0:3]
@@ -63,15 +73,17 @@ def pedestrian_ID(image_path, title, robot_frame, dist_scale):
 
 	# pedestrian_ID - the line of *'s are arbitrary, just a quick check that we've identified the pedestrian in the terminal
 	if len(good_points) > positive_match:
-		print(title + ": ******************* pedestrian_ID: " + str(len(good_points)))
+		#print(title + ": ******************* pedestrian_ID: " + str(len(good_points)))
 		match = TRUE		
 	else:
-		print(title + ": no pedestrian_ID: " + str(len(good_points)))
+		#print(title + ": no pedestrian_ID: " + str(len(good_points)))
 		match = FALSE
 
 	return match
 
 def callback_image(data):
+	global detect_ped_list
+	global count
 	cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
 	#frame = cropImage(X1,X2,Y1,Y2,cv_image)
 
@@ -80,8 +92,19 @@ def callback_image(data):
 	# try recognizing backside of pedestrian 
 	matches2 = pedestrian_ID(image_front, "front", cv_image, dist_scale_front)
 
-	print("back: " + str(matches1))
-	print("front: " + str(matches2))
+	if matches1 or matches2:
+		count = count + 1
+		detect_ped_list = []
+	else:
+		detect_ped_list.append(FALSE)
+
+	if len(detect_ped_list) < detect_thresh:
+		print("***********************detected!")
+	else:
+		print("not detected")
+
+	#print("back: " + str(matches1))
+	#print("front: " + str(matches2))
 
 # ROS setup stuff below
 rospy.init_node('comp_image_read_node')
@@ -90,7 +113,6 @@ velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
 move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image) 
 rospy.spin()
-
 
 '''
 # Stuff I did not use but may be helpful

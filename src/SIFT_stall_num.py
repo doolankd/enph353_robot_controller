@@ -19,9 +19,6 @@ FALSE = 0
 TRUE = 1
 
 image_front = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/black_far_P_GOOD.png" 
-write_location = "/home/fizzer/NN_pics/" 
-files_written = 0
-files_written_max = 50
 dist_scale_front = 0.8 # 0.7
 positive_match = 4 # 4
 
@@ -52,7 +49,6 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	global prev_y
 	global prev_match
 	global prev_prev_match
-	global files_written
 
 	reserved_frame = np.copy(robot_frame)
 
@@ -69,7 +65,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	cv2.imshow("HSV",frame)
 	cv2.waitKey(1)
 
-	# roslaunch my_controller SIFT_stall_num_gather_data.launch
+	# roslaunch my_controller SIFT_stall_num.launch
 	# ./run_sim.sh -vpg
 
 	# Camera Robot Frame - get keypoints and descriptors
@@ -110,7 +106,8 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		# Perspective transforms, helps with homography
 		h, w = img.shape        # height and width of original image
 
-		pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)    # points gets h and w of image. does not work with int32, but float32 works
+		# points gets h and w of image. does not work with int32, but float32 works
+		pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)
 		dst = cv2.perspectiveTransform(pts, matrix)
 		
 		point_0 = dst[0]
@@ -166,24 +163,8 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		print(" ")
 		print("number of good points: " + str(len(good_points)))
 		
-		centroid_frame = cv2.circle(original_frame,(x_centroid,y_centroid),6,(0,0,255),-1)
-		#cv2.imshow("centroid",centroid_frame)
-		#cv2.waitKey(1)
+		# roslaunch my_controller SIFT_stall_num.launch
 
-		pts = np.float32([[0, 0], [0, h + 50], [w + 50, h + 50], [w + 50, 0]]).reshape(-1, 1, 2)    # points gets h and w of image. does not work with int32, but float32 works
-		dst = cv2.perspectiveTransform(pts, matrix)
-		homography = cv2.polylines(frame, [np.int32(dst)], True, (255, 0, 0), 3)
-		# Homography of P
-		#cv2.imshow("Homography", homography)
-		#cv2.waitKey(1)
-
-		# new idea - afterwards, compute all this outside this big loop, so that we can deal with averages
-		# real frame x,y centroid coordinates
-		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list)) + X_crop_left
-		y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list)) + Y_crop_top
-
-		# roslaunch my_controller SIFT_stall_num_gather_data.launch
-	
 	else:
 		match = FALSE
 
@@ -192,25 +173,11 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
 		y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
 
-		# values i use to capture real data
+		# values i used to capture data
 		x_move = 35
 		y_move = -45
 		box_capture_height = 100
 		box_capture_width = 100
-
-		''' values i use to capture nothing
-		x_move = 130
-		y_move = -45
-		box_capture_height = 100
-		box_capture_width = 100
-		'''
-
-		''' values i use to capture P
-		x_move = -65 # i think
-		y_move = -45
-		box_capture_height = 100
-		box_capture_width = 100
-		'''
 
 		# draw rectangle function requires the top-left and bottom-right corner
 		top_left_x = x_centroid_avg + X_crop_left + x_move
@@ -219,6 +186,8 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		bottom_right_y = top_left_y + box_capture_height
 
 		stall_num_trace = cv2.rectangle(robot_frame,(top_left_x,top_left_y),(bottom_right_x,bottom_right_y),(0,0,255),3)
+		#cv2.imshow("trace",stall_num_trace)
+		#cv2.waitKey(1)
 
 		# Convert BGR to HSV
 		hsv = cv2.cvtColor(reserved_frame,cv2.COLOR_BGR2HSV)
@@ -231,17 +200,10 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		cv2.imshow("real stall", frame_threshold)
 		cv2.waitKey(1)
 
-		# roslaunch my_controller SIFT_stall_num_gather_data.launch
+		# During implemntation, will pass this image to the NN code
 
-		if files_written < files_written_max:
-			cv2.imwrite(write_location + "{}_1".format(sim_time_seconds) + ".png", frame_threshold)
-			files_written = files_written + 1
-
-		print("files_written: " + str(files_written))
-
-		# wait for the image to be processed
-		rospy.sleep(1)
-
+		# roslaunch my_controller SIFT_stall_num.launch
+	
 	prev_match = match
 	prev_prev_match = prev_match
 	return 5 # random number
