@@ -10,10 +10,38 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 
+#NN imports
+import math
+import re
+import random
+from sklearn.metrics import confusion_matrix
+
+from collections import Counter
+from matplotlib import pyplot as plt
+
+from os import listdir
+from os.path import isfile, join
+
+#training CNN
+from tensorflow.python.keras import layers
+from tensorflow.python.keras import models
+from tensorflow.python.keras import optimizers
+
+from tensorflow.python.keras.backend import set_session
+from tensorflow.python.keras.models import load_model
+
+from tensorflow.python.keras.utils import plot_model
+from tensorflow.python.keras import backend
+
+import tensorflow as tf
+
+import sys
+
 #PID VARIABLES:
 
 middle_screen_margin = 10
 nominal_speed = 0.1
+#nominal_speed = 0.05
 max_turn_speed = 1
 
 img_width = 0
@@ -29,6 +57,17 @@ prev_control = False # added by Ken
 blue_car_detected = False
 blue_running_time = 0.0
 first_pass = True
+
+#Thanks to Grace for finding this solution: https://github.com/tensorflow/tensorflow/issues/28287
+#tf_config = some_custom_config
+#sess = tf.Session(config=tf_config)
+sess = tf.Session()
+graph = tf.get_default_graph()
+set_session(sess)
+
+#load NN for license_plates
+license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_opt2")
+license_plate_recognized = False
 
 def get_center(img):
 	y_val = 700
@@ -236,6 +275,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 	global time_detected_blue_car
 	global blue_running_time
 	global first_pass
+	global license_plate_recognized
 	TIME_LIMIT = 1.5
 
 	lower_blue = np.array([110,50,50])
@@ -256,6 +296,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 
 		STARTING_Y_PIXEL = 500
 		STARTING_X_PIXEL = 150
+		license_plate_recognized = False
 
 	sub_img = hsv_img[STARTING_Y_PIXEL][:][:]
 	height, width, shape = hsv_img.shape #720, 1280, 3
@@ -297,11 +338,82 @@ def detect_blue_car(original_image,blue_detected_previous):
 			blue_car_detected = True
 			#print(blue_running_time)
 
+	'''if blue_car_detected == True and blue_detected_previous == False:
+		start_time = rospy.get_time()
+		while rospy.get_time() - start_time < 0.1:
+			move.angular.z = 0
+			move.linear.x = nominal_speed'''
+	#may need to tweak this
+
 
 	return blue_car_detected
 
-def callback_control(cmd):
+#**************************************************************
+#License Plate NN functions
 
+# Generate classes
+A_asci = 65
+Z_asci = 90
+classes = np.array([])
+for i in range(Z_asci-A_asci+1):
+  character = chr(A_asci+i)
+  classes = np.append(classes, character)
+for i in range(10):
+  classes = np.append(classes, i)
+
+#OVERALL PLATE DIMENSIONS CONSTANTS
+RESIZE_WIDTH = 320 #must be multiple of 4
+RESIZE_HEIGHT = 120
+
+resize_width = RESIZE_WIDTH
+resize_height = RESIZE_HEIGHT
+split = RESIZE_WIDTH/4
+
+INITIAL_RESIZE_WIDTH = 75
+INITIAL_RESIZE_HEIGHT = 25
+
+def split_images(imgset0,training_flag):
+
+  #final overall plate dimensions
+  resize_width = RESIZE_WIDTH
+  resize_height = RESIZE_HEIGHT
+
+  split = resize_width / 4
+  #plate = imgset0[0]
+
+  #put all the letters in one big array
+  #put that plate array into a bigger array
+  first_plate = True
+  for plate in imgset0:
+    #Resize images
+    #Found this function from https://www.tutorialkart.com/opencv/python/opencv-python-resize-image/
+    resized_plate = cv2.resize(plate, (resize_width, resize_height))
+    resized_plate = cv2.cvtColor(resized_plate,cv2.COLOR_BGR2RGB) #convert image colour back to what it usually is.
+    LL = resized_plate[:, 0:int(split)]
+    LC = resized_plate[:, int(split):int(split*2)]
+    RC = resized_plate[:, int(split*2):int(split*3)]
+    RR = resized_plate[:, int(split*3):int(split*4)]
+    if first_plate:
+      X_dataset = np.stack((LL,LC,RC,RR))
+      first_plate = False
+    else:
+      X_dataset = np.vstack((X_dataset,LL.reshape(1,int(resize_height),int(split),3),
+                                  LC.reshape(1,int(resize_height),int(split),3),
+                                  RC.reshape(1,int(resize_height),int(split),3),
+                                  RR.reshape(1,int(resize_height),int(split),3)))
+  return X_dataset
+
+def mapPredictionToCharacter(y_predict):
+    #maps NN predictions to the numbers based on the max probability.
+    y_predicted_max = np.max(y_predict)
+    index_predicted = np.where(y_predict == y_predicted_max)
+    character = classes[index_predicted]
+    return character[0]
+
+#**************************************************************
+
+def callback_control(cmd):
+	#control function that will determine when to get the robot to use PID control
 	global control_robot
 	global comp_start_time
 
@@ -326,6 +438,7 @@ def callback_image(img):
 	global comp_start_time
 	global blue_car_detected
 	global driving_straight
+	global license_plate_recognized
 
 	#print(control_robot)
 
@@ -352,8 +465,11 @@ def callback_image(img):
 			#print(blue_car_detected)
 			if blue_car_detected:
 				move.angular.z = 0
-				move.linear.x = nominal_speed
-
+				if license_plate_recognized:
+					move.linear.x = nominal_speed
+				else:
+					move.linear.x = 0
+				blue_car_pub.publish("blue car detected")
 			else:
 				midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road			
 
@@ -367,17 +483,39 @@ def callback_image(img):
 		prev_control = True
 		velocity_pub.publish(move)
 	else:
-		#this should only execute once competition ends
+		#this should only execute once competition ends... for now
 		move.angular.z = 0
 		move.linear.x = 0
 
 	#print(move.angular.z)
 	velocity_pub.publish(move)
 
+def callback_plate_NN(plate):
+	global sess
+	global graph
+	global license_plate_recognized
+	cv_plate = bridge.imgmsg_to_cv2(plate, desired_encoding='passthrough')
+	cv_plate = cv_plate.reshape(1,cv_plate.shape[0],cv_plate.shape[1],3)
+	split_plate = split_images(cv_plate,training_flag=False)
+	for j in range(len(split_plate)):
+		grey = cv2.cvtColor(split_plate[j], cv2.COLOR_BGR2GRAY).reshape(split_plate[j].shape[0],split_plate[j].shape[1],1)
+		img_aug = np.expand_dims(grey, axis=0)
+		#Thanks to Grace for finding this solution: https://github.com/tensorflow/tensorflow/issues/28287
+		with graph.as_default():
+			set_session(sess)
+			y_predict = license_plate_NN.predict(img_aug)[0]
+		predicted_character = mapPredictionToCharacter(y_predict)
+		print(predicted_character)
+	license_plate_recognized = True
+
+
+
 rospy.init_node('control_node')
 bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
+blue_car_pub = rospy.Publisher('/blue_car_detection',String,queue_size = 1)
 move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/rrbot/camera1/image_raw', Image,callback_image)
 control_sub = rospy.Subscriber('/control',String,callback_control)
+license_plate_sub = rospy.Subscriber('/sim_license_plates',Image,callback_plate_NN)
 rospy.spin()

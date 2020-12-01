@@ -3,4 +3,6 @@
 </include>
 <include file="$(find my_controller)/launch/line_follow.launch">
 </include>
+<include file="$(find my_controller)/launch/SIFT_license_plate.launch">
+</include>
 </launch>

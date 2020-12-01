@@ -15,8 +15,8 @@ from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 
-FALSE = 0
-TRUE = 1
+FALSE = False
+TRUE = True
 
 comparison_img = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/black_far_P_GOOD.png" 
 dist_scale_front = 0.8 # 0.7
@@ -36,8 +36,13 @@ prev_x = 0
 prev_y = 0
 prev_match = FALSE
 prev_prev_match = FALSE
+found_match = False
+license_plate_frame = None
 
 sim_time_seconds = 0
+
+#detecting if blue car seen
+blue_car_detected = False
 
 def cropImage(width_start, width_end, height_start, height_end, frame):
 	return frame[height_start:height_end,width_start:width_end,0:3]
@@ -49,6 +54,10 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	global prev_y
 	global prev_match
 	global prev_prev_match
+	global found_match
+	global license_plate_frame
+
+	found_match = False
 
 	sift = cv2.xfeatures2d.SIFT_create()
 	frame = cropImage(X_crop_left,X_crop_right,Y_crop_top,Y_crop_bottom,robot_frame)
@@ -87,8 +96,8 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 			good_points.append(m)
 
 	img_matches = cv2.drawMatches(img, kp_image, frame, kp_frame, good_points, frame)
-	cv2.imshow("Matches", img_matches)
-	cv2.waitKey(1)
+	'''cv2.imshow("Matches", img_matches)
+	cv2.waitKey(1)'''
 
 	match = FALSE
 	if len(good_points) > positive_match:
@@ -178,7 +187,7 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 
 	# once we have populated the centroid list, will now capture license plate and write to a file
 	if len(X_centroid_list) != 0 and match and prev_match and prev_prev_match:
-
+		found_match = True
 		# new idea
 		# real frame x,y centroid coordinates
 		x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list)) + X_crop_left
@@ -280,18 +289,31 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		# comutes perspective transform given max height and width, and the transform matrix, M
 		M = cv2.getPerspectiveTransform(original_lines, dst)
 		license_plate_frame = cv2.warpPerspective(box_frame_clean, M, (maxWidth, maxHeight))
-		cv2.imshow("license plate", license_plate_frame)
-		cv2.waitKey(1)
+		'''cv2.imshow("license plate", license_plate_frame)
+		cv2.waitKey(1)'''
 
 		# roslaunch my_controller SIFT_license_plate.launch
 
 	prev_prev_match = prev_match
 	prev_match = match
-	return match
+	return found_match
+
+def callback_blue_car(b_car_detected):
+	global blue_car_detected
+	#extract original string from data
+	blue_car_detected = str(b_car_detected.data)
 
 def callback_image(data):
-	cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
-	matches1 = license_plate_detect(comparison_img, "front", cv_image, dist_scale_front)
+	global blue_car_detected
+	if blue_car_detected == "blue car detected":
+		cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
+		plate_detected = license_plate_detect(comparison_img, "front", cv_image, dist_scale_front)
+		print(plate_detected)
+		if plate_detected:
+			license_plate = bridge.cv2_to_imgmsg(license_plate_frame, encoding="passthrough")
+			license_plate_img_pub.publish(license_plate)
+		blue_car_detected = False
+
 
 def callback_time(data):
 	global sim_time_seconds
@@ -302,7 +324,9 @@ def callback_time(data):
 rospy.init_node('detect_car_node')
 bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
+license_plate_img_pub = rospy.Publisher('/sim_license_plates',Image,queue_size=1)
 move = Twist()
+blue_car_sub = rospy.Subscriber('/blue_car_detection',String,callback_blue_car)
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image) 
 time_sub = rospy.Subscriber('/clock',String,callback_time)
 rospy.sleep(1) # wait 1 second to let things start up
