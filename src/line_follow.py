@@ -715,7 +715,7 @@ def callback_crosswalk(safe_to_cross):
 			velocity_pub.publish(move)
 			recently_crossed = True
 			red_line_count = 0
-			time.sleep(2.8)
+			time.sleep(2.5)
 			crossing_crosswalk = False
 			#print("safe")
 		else:
