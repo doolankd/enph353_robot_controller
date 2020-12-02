@@ -322,6 +322,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 	global stall_recognized
 	global plate_not_published
 	global num_times_inched_forward
+	global recently_crossed
 
 	TIME_LIMIT = 1.5
 
@@ -338,6 +339,8 @@ def detect_blue_car(original_image,blue_detected_previous):
 	if blue_detected_previous:
 		STARTING_Y_PIXEL = 500
 		STARTING_X_PIXEL = 0
+		#reset the crosswalk code when blue car is detected
+		recently_crossed = False
 
 	else:
 
@@ -658,27 +661,28 @@ def callback_stall_NN(guess):
 # ./score_tracker.py
 
 def callback_crosswalk(safe_to_cross):
-	global red_line_count
+	global recently_crossed
 	global crossing_crosswalk
 	global red_line_detected
 	safe_to_cross = str(safe_to_cross.data)
-	if safe_to_cross == "True":
-		move.angular.z = 0
-		move.linear.x = 0.3
-		red_line_detected = False
-		crossing_crosswalk = True
-		velocity_pub.publish(move)
-		red_line_count = 0
-		red_line_detected = False
-		crossing_crosswalk = True
-		time.sleep(1.5)
-		crossing_crosswalk = False
-		print("safe")
-	else:
-		print("unsafe")
-		move.angular.z = 0
-		move.linear.x = 0
-		velocity_pub.publish(move)
+
+	if not recently_crossed:
+		if safe_to_cross == "True":
+			move.angular.z = 0
+			move.linear.x = 0.3
+			red_line_detected = False
+			crossing_crosswalk = True
+			velocity_pub.publish(move)
+			recently_crossed = True
+			red_line_count = 0
+			time.sleep(2.3)
+			crossing_crosswalk = False
+			print("safe")
+		else:
+			print("unsafe")
+			move.angular.z = 0
+			move.linear.x = 0
+			velocity_pub.publish(move)
 
 rospy.init_node('control_node')
 bridge = CvBridge()
