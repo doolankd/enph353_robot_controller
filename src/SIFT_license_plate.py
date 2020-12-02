@@ -15,8 +15,8 @@ from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 
-FALSE = False
-TRUE = True
+False = False
+True = True
 
 comparison_img = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/black_far_P_GOOD.png" 
 dist_scale_front = 0.8 # 0.7
@@ -34,8 +34,8 @@ Y_centroid_list = []
 centroid_avg_error = 25
 prev_x = 0
 prev_y = 0
-prev_match = FALSE
-prev_prev_match = FALSE
+prev_match = False
+prev_prev_match = False
 found_match = False
 license_plate_frame = None
 
@@ -86,104 +86,108 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 	index_params = dict(algorithm=0, trees=5)
 	search_params = dict()
 	flann = cv2.FlannBasedMatcher(index_params, search_params)
-	matches = flann.knnMatch(desc_image, desc_frame, k=2)
 
-	# save to list
-	good_points = []
-	for m, n in matches:
-		# to avoid many false results, play with the dist_scale constant: 0.6, 0.7, 0.8 
-		if m.distance < dist_scale * n.distance:
-			good_points.append(m)
+	if desc_frame is not None and len(kp_image) >= 2 and len(kp_frame) >= 2:
+		matches = flann.knnMatch(desc_image, desc_frame, k=2)
 
-	img_matches = cv2.drawMatches(img, kp_image, frame, kp_frame, good_points, frame)
-	'''cv2.imshow("Matches", img_matches)
-	cv2.waitKey(1)'''
+		# save to list
+		good_points = []
+		for m, n in matches:
+			# to avoid many False results, play with the dist_scale constant: 0.6, 0.7, 0.8 
+			if m.distance < dist_scale * n.distance:
+				good_points.append(m)
 
-	match = FALSE
-	if len(good_points) > positive_match:
-		match = TRUE		
+		img_matches = cv2.drawMatches(img, kp_image, frame, kp_frame, good_points, frame)
+		'''cv2.imshow("Matches", img_matches)
+		cv2.waitKey(1)'''
 
-		query_pts = np.float32([kp_image[m.queryIdx].pt for m in good_points]).reshape(-1, 1, 2)
-		train_pts = np.float32([kp_frame[m.trainIdx].pt for m in good_points]).reshape(-1, 1, 2)
+		match = False
+		if len(good_points) > positive_match:
+			match = True		
 
-		# matrix shows object from its perspective?
-		matrix, mask = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 5.0)
-		matches_mask = mask.ravel().tolist()        # extract points from mask and put into a list
+			query_pts = np.float32([kp_image[m.queryIdx].pt for m in good_points]).reshape(-1, 1, 2)
+			train_pts = np.float32([kp_frame[m.trainIdx].pt for m in good_points]).reshape(-1, 1, 2)
 
-		# Perspective transforms, helps with homography
-		h, w = img.shape        # height and width of original image
+			# matrix shows object from its perspective?
+			matrix, mask = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 5.0)
+			matches_mask = mask.ravel().tolist()        # extract points from mask and put into a list
 
-		 # points gets h and w of image. does not work with int32, but float32 works
-		pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)
-		dst = cv2.perspectiveTransform(pts, matrix)
-		
-		# homography square corner points
-		point_0 = dst[0]
-		point_1 = dst[1]
-		point_2 = dst[2]
-		point_3 = dst[3]
+			# Perspective transforms, helps with homography
+			h, w = img.shape        # height and width of original image
 
-		x = []
-		y = []
+			 # points gets h and w of image. does not work with int32, but float32 works
+			pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)
+			dst = cv2.perspectiveTransform(pts, matrix)
+			
+			# homography square corner points
+			point_0 = dst[0]
+			point_1 = dst[1]
+			point_2 = dst[2]
+			point_3 = dst[3]
 
-		i = 0
-		while i < 4:
-			x.append(dst[i,0,0])
-			y.append(dst[i,0,1])
-			i = i + 1
+			x = []
+			y = []
 
-		x_centroid = int(sum(x)/4.0)
-		y_centroid = int(sum(y)/4.0)
+			i = 0
+			while i < 4:
+				x.append(dst[i,0,0])
+				y.append(dst[i,0,1])
+				i = i + 1
 
-		# take good centroid points - accounting fo error
-		if len(X_centroid_list) == 0:
-			# first list entry
-			X_centroid_list.append(x_centroid)
-			Y_centroid_list.append(y_centroid)
-		else:
-			if abs(prev_x-x_centroid) < centroid_avg_error and abs(prev_y-y_centroid) < centroid_avg_error:
-				# detecting similar location
-				x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
-				y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
-				if abs(x_centroid-x_centroid_avg) < centroid_avg_error and abs(y_centroid-y_centroid_avg) < centroid_avg_error:
-					# around location of ongoing centroid point
-					X_centroid_list.append(x_centroid)
-					Y_centroid_list.append(y_centroid)
-					#print(" ")
-					#print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
+			x_centroid = int(sum(x)/4.0)
+			y_centroid = int(sum(y)/4.0)
 
-				else:
-					# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
-					new_list1 = []
-					new_list2 = []
-					X_centroid_list = new_list1
-					Y_centroid_list = new_list2
-					X_centroid_list.append(prev_x)
-					X_centroid_list.append(x_centroid)
-					Y_centroid_list.append(prev_y)
-					Y_centroid_list.append(y_centroid)
+			# take good centroid points - accounting fo error
+			if len(X_centroid_list) == 0:
+				# first list entry
+				X_centroid_list.append(x_centroid)
+				Y_centroid_list.append(y_centroid)
 			else:
-				# nothing happens this run, we don't know if the robot moved or got a noisy result
-				nothing = 0
+				if abs(prev_x-x_centroid) < centroid_avg_error and abs(prev_y-y_centroid) < centroid_avg_error:
+					# detecting similar location
+					x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
+					y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
+					if abs(x_centroid-x_centroid_avg) < centroid_avg_error and abs(y_centroid-y_centroid_avg) < centroid_avg_error:
+						# around location of ongoing centroid point
+						X_centroid_list.append(x_centroid)
+						Y_centroid_list.append(y_centroid)
+						#print(" ")
+						#print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
 
-		prev_x = x_centroid
-		prev_y = y_centroid
+					else:
+						# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
+						new_list1 = []
+						new_list2 = []
+						X_centroid_list = new_list1
+						Y_centroid_list = new_list2
+						X_centroid_list.append(prev_x)
+						X_centroid_list.append(x_centroid)
+						Y_centroid_list.append(prev_y)
+						Y_centroid_list.append(y_centroid)
+				else:
+					# nothing happens this run, we don't know if the robot moved or got a noisy result
+					nothing = 0
 
-		#print("vals: " + str(x_centroid) + " " + str(y_centroid))
-		#print(" ")
-		#print("number of good points: " + str(len(good_points)))
-		
-		# draws the centroid onto a frame - EVENTUALLY GET RID OF THIS
-		#centroid_frame = cv2.circle(original_frame,(x_centroid,y_centroid),6,(0,0,255),-1)
+			prev_x = x_centroid
+			prev_y = y_centroid
 
-		# points gets h and w of image. does not work with int32, but float32 works
-		pts = np.float32([[0, 0], [0, h + 50], [w + 50, h + 50], [w + 50, 0]]).reshape(-1, 1, 2)   
-		dst = cv2.perspectiveTransform(pts, matrix)
-		# homography of P
-		homography = cv2.polylines(frame, [np.int32(dst)], True, (255, 0, 0), 3)
+			#print("vals: " + str(x_centroid) + " " + str(y_centroid))
+			#print(" ")
+			#print("number of good points: " + str(len(good_points)))
+			
+			# draws the centroid onto a frame - EVENTUALLY GET RID OF THIS
+			#centroid_frame = cv2.circle(original_frame,(x_centroid,y_centroid),6,(0,0,255),-1)
 
+			# points gets h and w of image. does not work with int32, but float32 works
+			pts = np.float32([[0, 0], [0, h + 50], [w + 50, h + 50], [w + 50, 0]]).reshape(-1, 1, 2)   
+			dst = cv2.perspectiveTransform(pts, matrix)
+			# homography of P
+			homography = cv2.polylines(frame, [np.int32(dst)], True, (255, 0, 0), 3)
+
+		else:
+			match = False
 	else:
-		match = FALSE
+		match = False
 
 	# once we have populated the centroid list, will now capture license plate and write to a file
 	if len(X_centroid_list) != 0 and match and prev_match and prev_prev_match:

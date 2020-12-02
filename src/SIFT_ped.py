@@ -60,25 +60,29 @@ def pedestrian_ID(image_path, title, robot_frame, dist_scale):
 	index_params = dict(algorithm=0, trees=5)
 	search_params = dict()
 	flann = cv2.FlannBasedMatcher(index_params, search_params)
-	matches = flann.knnMatch(desc_image, desc_frame, k=2)
 
-	good_points = []
-	for m, n in matches:
-		# to avoid many False results, take descriptors that have short distances between them
-		# play with the dist_scale constant: 0.6, 0.7, 0.8 - potential values
-		if m.distance < dist_scale * n.distance:
-			good_points.append(m)
+	if desc_frame is not None and len(kp_image) >= 2 and len(kp_frame) >= 2:
+		matches = flann.knnMatch(desc_image, desc_frame, k=2)
 
-	img_matches = cv2.drawMatches(img, kp_image, frame, kp_frame, good_points, frame)
-	#cv2.imshow("Matches", img_matches)
-	#cv2.waitKey(1)
+		good_points = []
+		for m, n in matches:
+			# to avoid many False results, take descriptors that have short distances between them
+			# play with the dist_scale constant: 0.6, 0.7, 0.8 - potential values
+			if m.distance < dist_scale * n.distance:
+				good_points.append(m)
 
-	# pedestrian_ID - the line of *'s are arbitrary, just a quick check that we've identified the pedestrian in the terminal
-	if len(good_points) > positive_match:
-		#print(title + ": ******************* pedestrian_ID: " + str(len(good_points)))
-		match = True		
+		img_matches = cv2.drawMatches(img, kp_image, frame, kp_frame, good_points, frame)
+		#cv2.imshow("Matches", img_matches)
+		#cv2.waitKey(1)
+
+		# pedestrian_ID - the line of *'s are arbitrary, just a quick check that we've identified the pedestrian in the terminal
+		if len(good_points) > positive_match:
+			#print(title + ": ******************* pedestrian_ID: " + str(len(good_points)))
+			match = True		
+		else:
+			#print(title + ": no pedestrian_ID: " + str(len(good_points)))
+			match = False
 	else:
-		#print(title + ": no pedestrian_ID: " + str(len(good_points)))
 		match = False
 
 	return match
