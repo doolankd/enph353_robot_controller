@@ -246,8 +246,8 @@ def stall_num_detect(image_path, title, robot_frame, dist_scale):
 
 		#print(frame_threshold.shape)
 		frame_stall_trace = frame_stall_trace[top_left_y:bottom_right_y,top_left_x:bottom_right_x]
-		cv2.imshow("real stall", frame_threshold)
-		cv2.waitKey(1)
+		#cv2.imshow("real stall", frame_threshold)
+		#cv2.waitKey(1)
 
 		# roslaunch my_controller SIFT_stall_num.launch
 	
@@ -281,11 +281,11 @@ def callback_image(data):
 				set_session(sess1)
 				y_predict = stall_NN.predict(img_aug)[0]
 			predicted_character = map_stall_prediction_to_char(y_predict)
-			print("predicted stall: " + str(predicted_character))
+			#print("predicted stall: " + str(predicted_character))
 
 			if str(predicted_character) == "7" or str(predicted_character) == "8":
 				# we got a bad reading, 
-				blue_car_detected = True
+				blue_car_detected = "blue car detected"
 			else:
 				# publish the predicted character
 				stall_img_pub.publish(str(predicted_character))

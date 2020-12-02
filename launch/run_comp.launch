@@ -1,10 +1,10 @@
 <launch>
 <include file="$(find my_controller)/launch/competition_code.launch">
 </include>
+<include file="$(find my_controller)/launch/SIFT_stall_num.launch">
+</include>
 <include file="$(find my_controller)/launch/line_follow.launch">
 </include>
 <include file="$(find my_controller)/launch/SIFT_license_plate.launch">
-</include>
-<include file="$(find my_controller)/launch/SIFT_stall_num.launch">
 </include>
 </launch>

@@ -17,7 +17,7 @@ from std_msgs.msg import String
 FALSE = 0
 TRUE = 1
 
-start_time = 45 # simulation seconds
+start_time = 25 # simulation seconds
 end_time = start_time + 60*4 # only for testing purposes, this 1 should be a 4 for 4 sim minutes
 time_seconds = 0
 run_once = 0

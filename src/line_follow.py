@@ -68,7 +68,7 @@ set_session(sess1)
 
 #load NN for license_plates
 #license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_license_plate_opt2")
-license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_Ken_trial_23")
+license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_opt2")
 license_plate_recognized = False
 stall_recognized = False
 plate_not_published = True
@@ -472,7 +472,7 @@ def callback_image(img):
 	global count
 	global stationary_count
 	global predicted_plate_number
-  global stall_number
+	global stall_number
 	#print(control_robot)
 
 	if control_robot:
@@ -507,7 +507,7 @@ def callback_image(img):
 			if blue_car_detected:
 				move.angular.z = 0
 				if license_plate_recognized and stall_recognized:
-          stationary_count = 0
+					stationary_count = 0
 					move.linear.x = nominal_speed
 					if plate_not_published:
 						plate_to_score_tracker_pub.publish("FineLine,golden," + str(stall_number) + "," + predicted_plate_number)
@@ -561,30 +561,33 @@ def callback_plate_NN(plate):
 			y_predict = license_plate_NN.predict(img_aug)[0]
 		predicted_character = mapPredictionToCharacter(y_predict)
 		plate_number += str(predicted_character)
-	print(plate_number)
+	#print(plate_number)
+	#predicted_plate_number = plate_number
+	#license_plate_recognized = True
 	#stash the license plates and wait until the stash hits 20. once it hits 20, then take
 	if num_samples < 20:
 		sample_set.append(plate_number)
-		license_plate_recognized = False
+		print(sample_set)
+		#license_plate_recognized = False
 		num_samples+=1
 	else:
 		num_samples = 0
 		license_plate_recognized = True
 		sample_set_counter = Counter(sample_set)
 		predicted_plate_number = sample_set_counter.most_common(1)[0][0]
-		print("output***************************************", plate_number)
+		print("output***************************************", predicted_plate_number)
 		sample_set = []
 
 	#can add something like this to test whether its actually 
 
 def callback_stall_NN(guess):
 	global stall_recognized
-  global stall_number
+	global stall_number
+	stall_recognized = True
 	#extract original string from data
-	stall_number = str(guess.data)
+	stall_number = str(guess.data)[0]
 	print("predicted stall: " + str(stall_number))
 	# later on, do the if statement with the 7 and the 8
-	stall_recognized = True
 
 # ./run_sim.sh -vpg
 # roslaunch my_controller run_comp.launch
@@ -599,7 +602,6 @@ image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/
 control_sub = rospy.Subscriber('/control',String,callback_control)
 license_plate_sub = rospy.Subscriber('/sim_license_plates',Image,callback_plate_NN)
 plate_to_score_tracker_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
-rospy.spin()
 #license_plate_sub = rospy.Subscriber('/sim_stall',Image,callback_stall_NN)
-license_plate_sub = rospy.Subscriber('/sim_stall',String,callback_stall_NN)
+stall_sub = rospy.Subscriber('/sim_stall',String,callback_stall_NN)
 rospy.spin()
