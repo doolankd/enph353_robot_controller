@@ -616,6 +616,9 @@ def callback_image(img):
 	if not crossing_crosswalk:
 		velocity_pub.publish(move)
 
+numbers = ['0','1','2','3','4','5','6','7','8','9']
+letters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+
 def callback_plate_NN(plate):
 	global sess1
 	global graph1
@@ -636,6 +639,34 @@ def callback_plate_NN(plate):
 			set_session(sess1)
 			y_predict = license_plate_NN.predict(img_aug)[0]
 		predicted_character = mapPredictionToCharacter(y_predict)
+		if j == 0 or j == 1:
+			if predicted_character in numbers:
+				if predicted_character == '1':
+					predicted_character = 'I'
+				elif predicted_character == '0':
+					predicted_character = 'O'
+				elif predicted_character == '2':
+					predicted_character = 'Z'
+				elif predicted_character == '6':
+					predicted_character = 'G'
+		elif j == 2 or j == 3:
+			if predicted_character in letters:
+				if predicted_character == 'O':
+					predicted_character = '0'
+				elif predicted_character == 'Q':
+					predicted_character = '0'
+				elif predicted_character == 'D':
+					predicted_character = '0'
+				elif predicted_character == 'Z':
+					predicted_character = '2'
+				elif predicted_character == 'I':
+					predicted_character = '1'
+				elif predicted_character == 'J':
+					predicted_character = '1'
+				elif predicted_character == 'G':
+					predicted_character = '6'
+
+
 		plate_number += str(predicted_character)
 	#print(plate_number)
 	#predicted_plate_number = plate_number
@@ -684,7 +715,7 @@ def callback_crosswalk(safe_to_cross):
 			velocity_pub.publish(move)
 			recently_crossed = True
 			red_line_count = 0
-			time.sleep(2.3)
+			time.sleep(2.8)
 			crossing_crosswalk = False
 			#print("safe")
 		else:
