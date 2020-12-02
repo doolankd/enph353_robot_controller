@@ -74,6 +74,7 @@ set_session(sess1)
 #load NN for license_plates
 #license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_license_plate_opt2")
 license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_opt2")
+#license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_Ken_trial_12")
 license_plate_recognized = False
 stall_recognized = False
 plate_not_published = True
@@ -672,7 +673,7 @@ def callback_plate_NN(plate):
 	#predicted_plate_number = plate_number
 	#license_plate_recognized = True
 	#stash the license plates and wait until the stash hits 20. once it hits 20, then take
-	if num_samples < 15:
+	if num_samples < 31:
 		sample_set.append(plate_number)
 		print(sample_set)
 		#license_plate_recognized = False
