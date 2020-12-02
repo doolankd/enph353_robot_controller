@@ -7,4 +7,6 @@
 </include>
 <include file="$(find my_controller)/launch/SIFT_stall_num.launch">
 </include>
+<include file="$(find my_controller)/launch/SIFT_ped.launch">
+</include>
 </launch>

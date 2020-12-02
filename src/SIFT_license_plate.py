@@ -149,8 +149,8 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 					# around location of ongoing centroid point
 					X_centroid_list.append(x_centroid)
 					Y_centroid_list.append(y_centroid)
-					print(" ")
-					print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
+					#print(" ")
+					#print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
 
 				else:
 					# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
@@ -169,9 +169,9 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 		prev_x = x_centroid
 		prev_y = y_centroid
 
-		print("vals: " + str(x_centroid) + " " + str(y_centroid))
-		print(" ")
-		print("number of good points: " + str(len(good_points)))
+		#print("vals: " + str(x_centroid) + " " + str(y_centroid))
+		#print(" ")
+		#print("number of good points: " + str(len(good_points)))
 		
 		# draws the centroid onto a frame - EVENTUALLY GET RID OF THIS
 		#centroid_frame = cv2.circle(original_frame,(x_centroid,y_centroid),6,(0,0,255),-1)
@@ -312,7 +312,6 @@ def callback_image(data):
 		if plate_detected:
 			license_plate = bridge.cv2_to_imgmsg(license_plate_frame, encoding="passthrough")
 			license_plate_img_pub.publish(license_plate)
-			r.sleep()
 		blue_car_detected = False
 
 
@@ -323,7 +322,6 @@ def callback_time(data):
 
 # ROS setup stuff below
 rospy.init_node('detect_car_node')
-r = rospy.Rate(5)
 bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
 license_plate_img_pub = rospy.Publisher('/sim_license_plates',Image,queue_size=1)

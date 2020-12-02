@@ -44,7 +44,7 @@ from collections import Counter
 middle_screen_margin = 10
 nominal_speed = 0.1
 #nominal_speed = 0.05
-max_turn_speed = 1
+max_turn_speed = 0.8 # 1
 
 img_width = 0
 previous_error = 0
@@ -68,7 +68,7 @@ set_session(sess1)
 
 #load NN for license_plates
 #license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_license_plate_opt2")
-license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_Ken_trial_23")
+license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_Ken_trial_22")
 license_plate_recognized = False
 stall_recognized = False
 plate_not_published = True
@@ -303,12 +303,12 @@ def detect_blue_car(original_image,blue_detected_previous):
 	#only_blue_left_img = cv2.bitwise_and(original_image,original_image, mask= mask)
 
 	if blue_detected_previous:
-		STARTING_Y_PIXEL = 500
+		STARTING_Y_PIXEL = 500 # 500
 		STARTING_X_PIXEL = 0
 
 	else:
 
-		STARTING_Y_PIXEL = 500
+		STARTING_Y_PIXEL = 550 #650
 		STARTING_X_PIXEL = 150
 		license_plate_recognized = False
 		stall_recognized = False
@@ -472,7 +472,7 @@ def callback_image(img):
 	global count
 	global stationary_count
 	global predicted_plate_number
-  global stall_number
+	global stall_number
 	#print(control_robot)
 
 	if control_robot:
@@ -507,17 +507,29 @@ def callback_image(img):
 			if blue_car_detected:
 				move.angular.z = 0
 				if license_plate_recognized and stall_recognized:
-          stationary_count = 0
+					stationary_count = 0
+					move.angular.z = -0.01
+					velocity_pub.publish(move)
+					time.sleep(0.2)
+					move.angular.z = 0
 					move.linear.x = nominal_speed
+					velocity_pub.publish(move)
+
+					#move.angular.z = 0.1
 					if plate_not_published:
 						plate_to_score_tracker_pub.publish("FineLine,golden," + str(stall_number) + "," + predicted_plate_number)
 						plate_not_published = False
+
+						#Ken added
+						#driving_straight = True
+						#blue_car_detected = True
 						#count+=1
 				else:
 					move.linear.x = 0
 					stationary_count+=1
 					if stationary_count > 50:
-						move.linear.x = 0.05
+						move.linear.x = 0.0 # 0.1
+						move.angular.z = 0.5
 						stationary_count = 0
 					blue_car_pub.publish("blue car detected")
 			else:
@@ -565,7 +577,7 @@ def callback_plate_NN(plate):
 	#stash the license plates and wait until the stash hits 20. once it hits 20, then take
 	if num_samples < 20:
 		sample_set.append(plate_number)
-		license_plate_recognized = False
+		#license_plate_recognized = False
 		num_samples+=1
 	else:
 		num_samples = 0
@@ -579,11 +591,12 @@ def callback_plate_NN(plate):
 
 def callback_stall_NN(guess):
 	global stall_recognized
-  global stall_number
+	global stall_number
 	#extract original string from data
-	stall_number = str(guess.data)
-	print("predicted stall: " + str(stall_number))
-	# later on, do the if statement with the 7 and the 8
+	stall_number = str(guess.data)[0]
+	print("LINE FOLLOW - predicted stall: " + str(stall_number))
+	#print("In line_follow####################################")
+
 	stall_recognized = True
 
 # ./run_sim.sh -vpg
@@ -599,7 +612,6 @@ image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/
 control_sub = rospy.Subscriber('/control',String,callback_control)
 license_plate_sub = rospy.Subscriber('/sim_license_plates',Image,callback_plate_NN)
 plate_to_score_tracker_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
-rospy.spin()
-#license_plate_sub = rospy.Subscriber('/sim_stall',Image,callback_stall_NN)
-license_plate_sub = rospy.Subscriber('/sim_stall',String,callback_stall_NN)
+#stall_sub = rospy.Subscriber('/sim_stall',Image,callback_stall_NN)
+stall_sub = rospy.Subscriber('/sim_stall',String,callback_stall_NN)
 rospy.spin()
