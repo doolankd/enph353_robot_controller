@@ -37,6 +37,8 @@ import tensorflow as tf
 
 import sys
 
+from collections import Counter 
+
 #PID VARIABLES:
 
 middle_screen_margin = 10
@@ -68,6 +70,13 @@ set_session(sess)
 #load NN for license_plates
 license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_opt2")
 license_plate_recognized = False
+stall_recognized = True #DSDFSDFNNNNEEEEEDD DTOOOO CHANGEEEE THISSSS
+plate_not_published = True
+license_plate_location = ""
+plate_number = ""
+
+num_samples = 0
+sample_set = []
 
 def get_center(img):
 	y_val = 700
@@ -276,6 +285,8 @@ def detect_blue_car(original_image,blue_detected_previous):
 	global blue_running_time
 	global first_pass
 	global license_plate_recognized
+	global stall_recognized
+	global plate_not_published
 	TIME_LIMIT = 1.5
 
 	lower_blue = np.array([110,50,50])
@@ -297,6 +308,8 @@ def detect_blue_car(original_image,blue_detected_previous):
 		STARTING_Y_PIXEL = 500
 		STARTING_X_PIXEL = 150
 		license_plate_recognized = False
+		stall_recognized = False
+		plate_not_published = True
 
 	sub_img = hsv_img[STARTING_Y_PIXEL][:][:]
 	height, width, shape = hsv_img.shape #720, 1280, 3
@@ -340,7 +353,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 
 	'''if blue_car_detected == True and blue_detected_previous == False:
 		start_time = rospy.get_time()
-		while rospy.get_time() - start_time < 0.1:
+		while rospy.get_time() - start_time < 0.08:
 			move.angular.z = 0
 			move.linear.x = nominal_speed'''
 	#may need to tweak this
@@ -412,6 +425,9 @@ def mapPredictionToCharacter(y_predict):
 
 #**************************************************************
 
+#**************************************************************
+
+
 def callback_control(cmd):
 	#control function that will determine when to get the robot to use PID control
 	global control_robot
@@ -432,6 +448,8 @@ def callback_control(cmd):
 	else:
 		print("skipped")
 
+stationary_count = 0
+count = 2
 def callback_image(img):
 
 	global control_robot
@@ -439,7 +457,12 @@ def callback_image(img):
 	global blue_car_detected
 	global driving_straight
 	global license_plate_recognized
-
+	global stall_recognized
+	global plate_not_published
+	global license_plate_location
+	global count
+	global stationary_count
+	global predicted_plate_number
 	#print(control_robot)
 
 	if control_robot:
@@ -460,16 +483,34 @@ def callback_image(img):
 		#this should only execute once competition starts
 
 		else:
+			#first off, blue_car_detected = False
+			#it wil just do PID using follow_line
+			#only when during PID, the car is driving straight, the blue car is scanned for
+			#once blue car is detected, then it will stop
+			#it will wait until a license plate has been decoded.
+			#once the license plate and stall is decoded, it publishes it to the score tracker
+			#then it sets a flag so that the score tracker doesnt run again while the blue car is still being detected
+			#
 
 			cv_image = bridge.imgmsg_to_cv2(img, "bgr8")#image robot sees
 			#print(blue_car_detected)
 			if blue_car_detected:
 				move.angular.z = 0
 				if license_plate_recognized:
+					stationary_count = 0
 					move.linear.x = nominal_speed
+					if plate_not_published:
+						plate_to_score_tracker_pub.publish("FineLine,golden," + str(count) + "," + predicted_plate_number)
+						plate_not_published = False
+						count+=1
 				else:
 					move.linear.x = 0
-				blue_car_pub.publish("blue car detected")
+					stationary_count+=1
+					if stationary_count > 50:
+						move.linear.x = 0.05
+						stationary_count = 0
+
+					blue_car_pub.publish("blue car detected")
 			else:
 				midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road			
 
@@ -494,6 +535,11 @@ def callback_plate_NN(plate):
 	global sess
 	global graph
 	global license_plate_recognized
+	global plate_number
+	global num_samples
+	global sample_set
+	global predicted_plate_number
+	plate_number = ""
 	cv_plate = bridge.imgmsg_to_cv2(plate, desired_encoding='passthrough')
 	cv_plate = cv_plate.reshape(1,cv_plate.shape[0],cv_plate.shape[1],3)
 	split_plate = split_images(cv_plate,training_flag=False)
@@ -505,8 +551,22 @@ def callback_plate_NN(plate):
 			set_session(sess)
 			y_predict = license_plate_NN.predict(img_aug)[0]
 		predicted_character = mapPredictionToCharacter(y_predict)
-		print(predicted_character)
-	license_plate_recognized = True
+		plate_number += str(predicted_character)
+	print(plate_number)
+	#stash the license plates and wait until the stash hits 20. once it hits 20, then take
+	if num_samples < 20:
+		sample_set.append(plate_number)
+		license_plate_recognized = False
+		num_samples+=1
+	else:
+		num_samples = 0
+		license_plate_recognized = True
+		sample_set_counter = Counter(sample_set)
+		predicted_plate_number = sample_set_counter.most_common(1)[0][0]
+		print("output***************************************", plate_number)
+		sample_set = []
+
+	#can add something like this to test whether its actually 
 
 
 
@@ -518,4 +578,5 @@ move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/rrbot/camera1/image_raw', Image,callback_image)
 control_sub = rospy.Subscriber('/control',String,callback_control)
 license_plate_sub = rospy.Subscriber('/sim_license_plates',Image,callback_plate_NN)
+plate_to_score_tracker_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
 rospy.spin()

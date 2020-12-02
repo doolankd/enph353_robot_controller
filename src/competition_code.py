@@ -17,16 +17,12 @@ from std_msgs.msg import String
 FALSE = 0
 TRUE = 1
 
-start_time = 40 # simulation seconds
-end_time = start_time + 60*1 # only for testing purposes, this 1 should be a 4 for 4 sim minutes
+start_time = 45 # simulation seconds
+end_time = start_time + 60*4 # only for testing purposes, this 1 should be a 4 for 4 sim minutes
 time_seconds = 0
 run_once = 0
 angular_vel = 0
 prev_time = 0
-
-# function included for funsies
-def callback_image(data):
-	cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
 
 def callback_time(data):
 	# allows us to change global variables
@@ -44,11 +40,6 @@ def callback_time(data):
 		license_publishing("0","XR58") # the license plate digits are filler, don't mean anything
 		run_once = 1
 		control_pub.publish("start")
-
-	# test sending license plates
-	if time_seconds == start_time + 30 and run_once == 1:
-		license_publishing("1","CH42")
-		run_once = 0
 
 	# end competition
 	if time_seconds == end_time and run_once == 0:
@@ -91,10 +82,7 @@ cd ~/ros_ws/src/2020T1_competition/enph353/enph353_utils/scripts
 # ROS setup stuff below
 rospy.init_node('comp_begin_node')
 bridge = CvBridge()
-image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)
 time_sub = rospy.Subscriber('/clock',String,callback_time)
 license_plate_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
 control_pub = rospy.Publisher('/control',String,queue_size = 1)
-velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
-move = Twist()
 rospy.spin()
