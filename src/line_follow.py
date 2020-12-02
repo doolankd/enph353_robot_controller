@@ -58,15 +58,15 @@ blue_car_detected = False
 blue_running_time = 0.0
 first_pass = True
 
-#Thanks to Grace for finding this solution: https://github.com/tensorflow/tensorflow/issues/28287
-#tf_config = some_custom_config
-#sess = tf.Session(config=tf_config)
-sess = tf.Session()
-graph = tf.get_default_graph()
-set_session(sess)
+#license_plate_NN._make_predict_function()
+sess1 = tf.Session()
+graph1 = tf.get_default_graph()
+#graph1 = tf.Graph()
+set_session(sess1)
 
 #load NN for license_plates
-license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_opt2")
+#license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_license_plate_opt2")
+license_plate_NN = load_model("/home/fizzer/ros_ws/src/my_controller/src/NN_object_Ken_trial_23")
 license_plate_recognized = False
 
 def get_center(img):
@@ -105,13 +105,13 @@ def get_center(img):
 						b_sum+=sub_img[i+j][0]
 						g_sum+=sub_img[i+j][1]
 						r_sum+=sub_img[i+j][2]
-			  		b_avg = b_sum / check_range
-			  		g_avg = g_sum / check_range
-			  		r_avg = r_sum / check_range
+					b_avg = b_sum / check_range
+					g_avg = g_sum / check_range
+					r_avg = r_sum / check_range
 
-			  		if (b_avg > grey_Lth and b_avg < grey_Uth and 
-			  		g_avg > grey_Lth and g_avg < grey_Uth and
-			  		r_avg > grey_Lth and r_avg < grey_Uth):
+					if (b_avg > grey_Lth and b_avg < grey_Uth and 
+					g_avg > grey_Lth and g_avg < grey_Uth and
+					r_avg > grey_Lth and r_avg < grey_Uth):
 						start_index = i
 						started = True
 				else:
@@ -119,32 +119,32 @@ def get_center(img):
 						b_sum+=sub_img[i+j][0]
 						g_sum+=sub_img[i+j][1]
 						r_sum+=sub_img[i+j][2]
-			  		b_avg = b_sum / check_range
-			  		g_avg = g_sum / check_range
-			  		r_avg = r_sum / check_range
+					b_avg = b_sum / check_range
+					g_avg = g_sum / check_range
+					r_avg = r_sum / check_range
 
-			  		if (b_avg > grey_Lth and b_avg < grey_Uth and 
-			  		g_avg > grey_Lth and g_avg < grey_Uth and
-			  		r_avg > grey_Lth and r_avg < grey_Uth):
+					if (b_avg > grey_Lth and b_avg < grey_Uth and 
+					g_avg > grey_Lth and g_avg < grey_Uth and
+					r_avg > grey_Lth and r_avg < grey_Uth):
 						start_index = i
 						started = True
 		else:
 			if started:
-			  	b_sum = 0
-			  	g_sum = 0
-			  	r_sum = 0
-			  	if i < (width - check_range):
-			  		for j in range(check_range):
+				b_sum = 0
+				g_sum = 0
+				r_sum = 0
+				if i < (width - check_range):
+					for j in range(check_range):
 						b_sum+=sub_img[i+j][0]
 						g_sum+=sub_img[i+j][1]
 						r_sum+=sub_img[i+j][2]
-			  		b_avg = b_sum / check_range
-			  		g_avg = g_sum / check_range
-			  		r_avg = r_sum / check_range
+					b_avg = b_sum / check_range
+					g_avg = g_sum / check_range
+					r_avg = r_sum / check_range
 
-			  		if not(b_avg > grey_Lth and b_avg < grey_Uth and 
-			  		g_avg > grey_Lth and g_avg < grey_Uth and
-			  		r_avg > grey_Lth and r_avg < grey_Uth):
+					if not(b_avg > grey_Lth and b_avg < grey_Uth and 
+					g_avg > grey_Lth and g_avg < grey_Uth and
+					r_avg > grey_Lth and r_avg < grey_Uth):
 						stop_index = i
 						started = False
 						break
@@ -153,27 +153,27 @@ def get_center(img):
 						b_sum+=sub_img[i+j][0]
 						g_sum+=sub_img[i+j][1]
 						r_sum+=sub_img[i+j][2]
-			  		b_avg = b_sum / check_range
-			  		g_avg = g_sum / check_range
-			  		r_avg = r_sum / check_range
+					b_avg = b_sum / check_range
+					g_avg = g_sum / check_range
+					r_avg = r_sum / check_range
 
-			  		if not(b_avg > grey_Lth and b_avg < grey_Uth and 
-			  		g_avg > grey_Lth and g_avg < grey_Uth and
-			  		r_avg > grey_Lth and r_avg < grey_Uth):
+					if not(b_avg > grey_Lth and b_avg < grey_Uth and 
+					g_avg > grey_Lth and g_avg < grey_Uth and
+					r_avg > grey_Lth and r_avg < grey_Uth):
 						stop_index = i
 						started = False
 						break
 
 	if started:
-	  	# if didnt stop
-	  	stop_index = width-1
+		# if didnt stop
+		stop_index = width-1
 
 	if stop_index is None or start_index is None:
-	  	road_detected = False
-	  	midpoint_road = None
+		road_detected = False
+		midpoint_road = None
 	else:
-	  	midpoint_road = int((stop_index + start_index) / 2)
-	  	road_detected = True
+		midpoint_road = int((stop_index + start_index) / 2)
+		road_detected = True
 
 	return midpoint_road, road_detected
 
@@ -276,6 +276,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 	global blue_running_time
 	global first_pass
 	global license_plate_recognized
+	global stall_recognized
 	TIME_LIMIT = 1.5
 
 	lower_blue = np.array([110,50,50])
@@ -297,6 +298,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 		STARTING_Y_PIXEL = 500
 		STARTING_X_PIXEL = 150
 		license_plate_recognized = False
+		stall_recognized = False
 
 	sub_img = hsv_img[STARTING_Y_PIXEL][:][:]
 	height, width, shape = hsv_img.shape #720, 1280, 3
@@ -349,6 +351,12 @@ def detect_blue_car(original_image,blue_detected_previous):
 	return blue_car_detected
 
 #**************************************************************
+# Stall NN helper
+
+classes_stall = np.array([])
+for i in range(1,9):
+  classes_stall = np.append(classes_stall, i)
+
 #License Plate NN functions
 
 # Generate classes
@@ -385,30 +393,30 @@ def split_images(imgset0,training_flag):
   #put that plate array into a bigger array
   first_plate = True
   for plate in imgset0:
-    #Resize images
-    #Found this function from https://www.tutorialkart.com/opencv/python/opencv-python-resize-image/
-    resized_plate = cv2.resize(plate, (resize_width, resize_height))
-    resized_plate = cv2.cvtColor(resized_plate,cv2.COLOR_BGR2RGB) #convert image colour back to what it usually is.
-    LL = resized_plate[:, 0:int(split)]
-    LC = resized_plate[:, int(split):int(split*2)]
-    RC = resized_plate[:, int(split*2):int(split*3)]
-    RR = resized_plate[:, int(split*3):int(split*4)]
-    if first_plate:
-      X_dataset = np.stack((LL,LC,RC,RR))
-      first_plate = False
-    else:
-      X_dataset = np.vstack((X_dataset,LL.reshape(1,int(resize_height),int(split),3),
-                                  LC.reshape(1,int(resize_height),int(split),3),
-                                  RC.reshape(1,int(resize_height),int(split),3),
-                                  RR.reshape(1,int(resize_height),int(split),3)))
+	#Resize images
+	#Found this function from https://www.tutorialkart.com/opencv/python/opencv-python-resize-image/
+	resized_plate = cv2.resize(plate, (resize_width, resize_height))
+	resized_plate = cv2.cvtColor(resized_plate,cv2.COLOR_BGR2RGB) #convert image colour back to what it usually is.
+	LL = resized_plate[:, 0:int(split)]
+	LC = resized_plate[:, int(split):int(split*2)]
+	RC = resized_plate[:, int(split*2):int(split*3)]
+	RR = resized_plate[:, int(split*3):int(split*4)]
+	if first_plate:
+	  X_dataset = np.stack((LL,LC,RC,RR))
+	  first_plate = False
+	else:
+	  X_dataset = np.vstack((X_dataset,LL.reshape(1,int(resize_height),int(split),3),
+								  LC.reshape(1,int(resize_height),int(split),3),
+								  RC.reshape(1,int(resize_height),int(split),3),
+								  RR.reshape(1,int(resize_height),int(split),3)))
   return X_dataset
 
 def mapPredictionToCharacter(y_predict):
-    #maps NN predictions to the numbers based on the max probability.
-    y_predicted_max = np.max(y_predict)
-    index_predicted = np.where(y_predict == y_predicted_max)
-    character = classes[index_predicted]
-    return character[0]
+	#maps NN predictions to the numbers based on the max probability.
+	y_predicted_max = np.max(y_predict)
+	index_predicted = np.where(y_predict == y_predicted_max)
+	character = classes[index_predicted]
+	return character[0]
 
 #**************************************************************
 
@@ -439,6 +447,7 @@ def callback_image(img):
 	global blue_car_detected
 	global driving_straight
 	global license_plate_recognized
+	global stall_recognized
 
 	#print(control_robot)
 
@@ -465,11 +474,11 @@ def callback_image(img):
 			#print(blue_car_detected)
 			if blue_car_detected:
 				move.angular.z = 0
-				if license_plate_recognized:
+				if license_plate_recognized and stall_recognized:
 					move.linear.x = nominal_speed
 				else:
 					move.linear.x = 0
-				blue_car_pub.publish("blue car detected")
+					blue_car_pub.publish("blue car detected")
 			else:
 				midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road			
 
@@ -491,8 +500,8 @@ def callback_image(img):
 	velocity_pub.publish(move)
 
 def callback_plate_NN(plate):
-	global sess
-	global graph
+	global sess1
+	global graph1
 	global license_plate_recognized
 	cv_plate = bridge.imgmsg_to_cv2(plate, desired_encoding='passthrough')
 	cv_plate = cv_plate.reshape(1,cv_plate.shape[0],cv_plate.shape[1],3)
@@ -501,14 +510,30 @@ def callback_plate_NN(plate):
 		grey = cv2.cvtColor(split_plate[j], cv2.COLOR_BGR2GRAY).reshape(split_plate[j].shape[0],split_plate[j].shape[1],1)
 		img_aug = np.expand_dims(grey, axis=0)
 		#Thanks to Grace for finding this solution: https://github.com/tensorflow/tensorflow/issues/28287
-		with graph.as_default():
-			set_session(sess)
+		with graph1.as_default():
+			set_session(sess1)
 			y_predict = license_plate_NN.predict(img_aug)[0]
 		predicted_character = mapPredictionToCharacter(y_predict)
 		print(predicted_character)
 	license_plate_recognized = True
 
+def callback_stall_NN(guess):
+	global stall_recognized
+	#extract original string from data
+	predicted_character = str(guess.data)
+	print("predicted stall: " + str(predicted_character))
+	# later on, do the if statement with the 7 and the 8
+	stall_recognized = True
 
+# ./run_sim.sh -vpg
+# roslaunch my_controller run_comp.launch
+# ./score_tracker.py
+
+def map_stall_prediction_to_char(y_predict):
+	y_predicted_max = np.max(y_predict)
+	index_predicted = np.where(y_predict == y_predicted_max)
+	character = classes_stall[index_predicted]
+	return character[0]
 
 rospy.init_node('control_node')
 bridge = CvBridge()
@@ -518,4 +543,6 @@ move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/rrbot/camera1/image_raw', Image,callback_image)
 control_sub = rospy.Subscriber('/control',String,callback_control)
 license_plate_sub = rospy.Subscriber('/sim_license_plates',Image,callback_plate_NN)
+#license_plate_sub = rospy.Subscriber('/sim_stall',Image,callback_stall_NN)
+license_plate_sub = rospy.Subscriber('/sim_stall',String,callback_stall_NN)
 rospy.spin()
