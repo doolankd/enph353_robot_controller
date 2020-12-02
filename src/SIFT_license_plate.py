@@ -117,73 +117,83 @@ def license_plate_detect(image_path, title, robot_frame, dist_scale):
 
 			 # points gets h and w of image. does not work with int32, but float32 works
 			pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)
-			dst = cv2.perspectiveTransform(pts, matrix)
 			
-			# homography square corner points
-			point_0 = dst[0]
-			point_1 = dst[1]
-			point_2 = dst[2]
-			point_3 = dst[3]
+			# these 2 if statements get rid of errors
+			if matrix is not None:
 
-			x = []
-			y = []
+				if len(matrix) != 0:
 
-			i = 0
-			while i < 4:
-				x.append(dst[i,0,0])
-				y.append(dst[i,0,1])
-				i = i + 1
+					dst = cv2.perspectiveTransform(pts, matrix)
+					
+					# homography square corner points
+					point_0 = dst[0]
+					point_1 = dst[1]
+					point_2 = dst[2]
+					point_3 = dst[3]
 
-			x_centroid = int(sum(x)/4.0)
-			y_centroid = int(sum(y)/4.0)
+					x = []
+					y = []
 
-			# take good centroid points - accounting fo error
-			if len(X_centroid_list) == 0:
-				# first list entry
-				X_centroid_list.append(x_centroid)
-				Y_centroid_list.append(y_centroid)
-			else:
-				if abs(prev_x-x_centroid) < centroid_avg_error and abs(prev_y-y_centroid) < centroid_avg_error:
-					# detecting similar location
-					x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
-					y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
-					if abs(x_centroid-x_centroid_avg) < centroid_avg_error and abs(y_centroid-y_centroid_avg) < centroid_avg_error:
-						# around location of ongoing centroid point
+					i = 0
+					while i < 4:
+						x.append(dst[i,0,0])
+						y.append(dst[i,0,1])
+						i = i + 1
+
+					x_centroid = int(sum(x)/4.0)
+					y_centroid = int(sum(y)/4.0)
+
+					# take good centroid points - accounting fo error
+					if len(X_centroid_list) == 0:
+						# first list entry
 						X_centroid_list.append(x_centroid)
 						Y_centroid_list.append(y_centroid)
-						#print(" ")
-						#print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
-
 					else:
-						# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
-						new_list1 = []
-						new_list2 = []
-						X_centroid_list = new_list1
-						Y_centroid_list = new_list2
-						X_centroid_list.append(prev_x)
-						X_centroid_list.append(x_centroid)
-						Y_centroid_list.append(prev_y)
-						Y_centroid_list.append(y_centroid)
+						if abs(prev_x-x_centroid) < centroid_avg_error and abs(prev_y-y_centroid) < centroid_avg_error:
+							# detecting similar location
+							x_centroid_avg = int(sum(X_centroid_list)/len(X_centroid_list))
+							y_centroid_avg = int(sum(Y_centroid_list)/len(Y_centroid_list))
+							if abs(x_centroid-x_centroid_avg) < centroid_avg_error and abs(y_centroid-y_centroid_avg) < centroid_avg_error:
+								# around location of ongoing centroid point
+								X_centroid_list.append(x_centroid)
+								Y_centroid_list.append(y_centroid)
+								#print(" ")
+								#print("avgs: " + str(x_centroid_avg) + " " + str(y_centroid_avg))
+
+							else:
+								# new and last value are close but far from avg, therefore the robot probably moved a lot, recalculate centroid at new location
+								new_list1 = []
+								new_list2 = []
+								X_centroid_list = new_list1
+								Y_centroid_list = new_list2
+								X_centroid_list.append(prev_x)
+								X_centroid_list.append(x_centroid)
+								Y_centroid_list.append(prev_y)
+								Y_centroid_list.append(y_centroid)
+						else:
+							# nothing happens this run, we don't know if the robot moved or got a noisy result
+							nothing = 0
+
+					prev_x = x_centroid
+					prev_y = y_centroid
+
+					#print("vals: " + str(x_centroid) + " " + str(y_centroid))
+					#print(" ")
+					#print("number of good points: " + str(len(good_points)))
+					
+					# draws the centroid onto a frame - EVENTUALLY GET RID OF THIS
+					#centroid_frame = cv2.circle(original_frame,(x_centroid,y_centroid),6,(0,0,255),-1)
+
+					# points gets h and w of image. does not work with int32, but float32 works
+					pts = np.float32([[0, 0], [0, h + 50], [w + 50, h + 50], [w + 50, 0]]).reshape(-1, 1, 2)   
+					dst = cv2.perspectiveTransform(pts, matrix)
+					# homography of P
+					homography = cv2.polylines(frame, [np.int32(dst)], True, (255, 0, 0), 3)
+
 				else:
-					# nothing happens this run, we don't know if the robot moved or got a noisy result
-					nothing = 0
-
-			prev_x = x_centroid
-			prev_y = y_centroid
-
-			#print("vals: " + str(x_centroid) + " " + str(y_centroid))
-			#print(" ")
-			#print("number of good points: " + str(len(good_points)))
-			
-			# draws the centroid onto a frame - EVENTUALLY GET RID OF THIS
-			#centroid_frame = cv2.circle(original_frame,(x_centroid,y_centroid),6,(0,0,255),-1)
-
-			# points gets h and w of image. does not work with int32, but float32 works
-			pts = np.float32([[0, 0], [0, h + 50], [w + 50, h + 50], [w + 50, 0]]).reshape(-1, 1, 2)   
-			dst = cv2.perspectiveTransform(pts, matrix)
-			# homography of P
-			homography = cv2.polylines(frame, [np.int32(dst)], True, (255, 0, 0), 3)
-
+					match = False
+			else:
+				match = False
 		else:
 			match = False
 	else:

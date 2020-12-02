@@ -513,6 +513,7 @@ def callback_image(img):
 	global red_line_detected
 	global red_line_count
 	global crossing_crosswalk
+	global sample_set
 	#print(control_robot)
 
 	if control_robot:
@@ -578,6 +579,14 @@ def callback_image(img):
 						num_times_inched_forward+=1
 						if num_times_inched_forward > 5:
 							move.linear.x = nominal_speed
+							if len(sample_set) != 0:
+								sample_set_counter = Counter(sample_set)
+								predicted_plate_number = sample_set_counter.most_common(1)[0][0]
+								print("output***************************************", predicted_plate_number)
+								sample_set = []
+								plate_to_score_tracker_pub.publish("FineLine,golden," + str(stall_number) + "," + predicted_plate_number)
+								license_plate_recognized = True
+								plate_not_published = False
 						else:
 							stationary_count = 0
 					blue_car_pub.publish("blue car detected")
