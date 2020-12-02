@@ -312,6 +312,7 @@ def callback_image(data):
 		if plate_detected:
 			license_plate = bridge.cv2_to_imgmsg(license_plate_frame, encoding="passthrough")
 			license_plate_img_pub.publish(license_plate)
+			r.sleep()
 		blue_car_detected = False
 
 
@@ -322,6 +323,7 @@ def callback_time(data):
 
 # ROS setup stuff below
 rospy.init_node('detect_car_node')
+r = rospy.Rate(5)
 bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
 license_plate_img_pub = rospy.Publisher('/sim_license_plates',Image,queue_size=1)
