@@ -3,6 +3,8 @@
 </include>
 <include file="$(find my_controller)/launch/SIFT_stall_num.launch">
 </include>
+<include file="$(find my_controller)/launch/SIFT_ped.launch">
+</include>
 <include file="$(find my_controller)/launch/line_follow.launch">
 </include>
 <include file="$(find my_controller)/launch/SIFT_license_plate.launch">

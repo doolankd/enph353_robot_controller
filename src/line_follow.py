@@ -62,6 +62,8 @@ first_pass = True
 
 time_since_red_line = 0.0
 red_line_detected = False
+red_line_count = 0
+crossing_crosswalk = False
 
 #license_plate_NN._make_predict_function()
 sess1 = tf.Session()
@@ -506,6 +508,8 @@ def callback_image(img):
 	global stall_number
 	global time_since_red_line
 	global red_line_detected
+	global red_line_count
+	global crossing_crosswalk
 	#print(control_robot)
 
 	if control_robot:
@@ -541,9 +545,16 @@ def callback_image(img):
 
 			if rospy.get_time() - time_since_red_line > 0.1:
 				red_line_detected = detect_red_line(cv_image)
-				print("made it in here")
-				print(red_line_detected)
-				red_line_pub.publish("True")
+				#print("made it in here")
+				#print(red_line_detected)
+				#if red_line_count == 5:
+				if red_line_detected and not crossing_crosswalk:
+					print("*****************************************")
+					red_line_pub.publish("True")
+					#red_line_count+=1
+				else:
+					red_line_detected = False
+				#red_line_count+=1
 				time_since_red_line = rospy.get_time()
 
 			#print(blue_car_detected)
@@ -590,7 +601,8 @@ def callback_image(img):
 		move.linear.x = 0
 
 	#print(move.angular.z)
-	velocity_pub.publish(move)
+	if not crossing_crosswalk:
+		velocity_pub.publish(move)
 
 def callback_plate_NN(plate):
 	global sess1
@@ -646,13 +658,24 @@ def callback_stall_NN(guess):
 # ./score_tracker.py
 
 def callback_crosswalk(safe_to_cross):
+	global red_line_count
+	global crossing_crosswalk
+	global red_line_detected
 	safe_to_cross = str(safe_to_cross.data)
 	if safe_to_cross == "True":
 		move.angular.z = 0
-		move.linear.x = 0.5
+		move.linear.x = 0.3
+		red_line_detected = False
+		crossing_crosswalk = True
 		velocity_pub.publish(move)
-		time.sleep(1)
+		red_line_count = 0
+		red_line_detected = False
+		crossing_crosswalk = True
+		time.sleep(1.5)
+		crossing_crosswalk = False
+		print("safe")
 	else:
+		print("unsafe")
 		move.angular.z = 0
 		move.linear.x = 0
 		velocity_pub.publish(move)

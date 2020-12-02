@@ -12,6 +12,7 @@ from python_qt_binding import loadUi
 
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 
 False = 0
@@ -109,13 +110,16 @@ def callback_image(data):
 
 def callback_red_line(detect):
 	global pedestrian_detected
-	status = detect.data
+	status = str(detect.data)
 
 	if status == "True":
-		# we have detected a red line
-		# wait a bit before publishing the message to rush through the crosswalk
-		time.sleep(2)
-		ped_detect_pub.publish("True")
+		print("ped detected:", pedestrian_detected)
+		if pedestrian_detected:
+			# we have detected a red line
+			# wait a bit before publishing the message to rush through the crosswalk
+			time.sleep(2)
+			print("publishing")
+			ped_detect_pub.publish("True")
 	else:
 		# have not detected the red line
 		ped_detect_pub.publish("False")

@@ -291,7 +291,7 @@ def callback_image(data):
 				predicted_character = int(predicted_character)
 				predict_array[predicted_character-1] = predict_array[predicted_character-1] + 1
 				# max returns the max value of the array
-				if np.max(predict_array) > 4:
+				if np.max(predict_array) > 15:
 					# publish the predicted character
 					max_char = np.max(predict_array)
 					i = 0
