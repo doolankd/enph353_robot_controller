@@ -102,10 +102,10 @@ def callback_image(data):
 		detect_ped_list.append(False)
 
 	if len(detect_ped_list) < detect_thresh:
-		print("***********************pedestrian detected!")
+		#print("***********************pedestrian detected!")
 		pedestrian_detected = True
 	else:
-		print("pedestrian not detected")
+		#print("pedestrian not detected")
 		pedestrian_detected = False
 
 def callback_red_line(detect):
@@ -113,12 +113,12 @@ def callback_red_line(detect):
 	status = str(detect.data)
 
 	if status == "True":
-		print("ped detected:", pedestrian_detected)
+		#print("ped detected:", pedestrian_detected)
 		if pedestrian_detected:
 			# we have detected a red line
 			# wait a bit before publishing the message to rush through the crosswalk
-			time.sleep(2)
-			print("publishing")
+			time.sleep(3.5)
+			#print("publishing")
 			ped_detect_pub.publish("True")
 	else:
 		# have not detected the red line

@@ -552,7 +552,7 @@ def callback_image(img):
 				#print(red_line_detected)
 				#if red_line_count == 5:
 				if red_line_detected and not crossing_crosswalk:
-					print("*****************************************")
+					#print("*****************************************")
 					red_line_pub.publish("True")
 					#red_line_count+=1
 				else:
@@ -677,9 +677,9 @@ def callback_crosswalk(safe_to_cross):
 			red_line_count = 0
 			time.sleep(2.3)
 			crossing_crosswalk = False
-			print("safe")
+			#print("safe")
 		else:
-			print("unsafe")
+			#print("unsafe")
 			move.angular.z = 0
 			move.linear.x = 0
 			velocity_pub.publish(move)
