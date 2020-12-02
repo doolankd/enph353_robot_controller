@@ -290,6 +290,7 @@ def callback_image(data):
 				# publish the predicted character
 				stall_img_pub.publish(str(predicted_character))
 				blue_car_detected = False
+				time.sleep(0.05)
 			
 			#stall_num = bridge.cv2_to_imgmsg(frame_stall_trace, encoding="passthrough")
 			# publishes a cropped, hsv image 

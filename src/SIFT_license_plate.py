@@ -313,6 +313,7 @@ def callback_image(data):
 			license_plate = bridge.cv2_to_imgmsg(license_plate_frame, encoding="passthrough")
 			license_plate_img_pub.publish(license_plate)
 			#r.sleep()
+			time.sleep(0.05)
 		blue_car_detected = False
 
 

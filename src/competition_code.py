@@ -17,7 +17,7 @@ from std_msgs.msg import String
 FALSE = 0
 TRUE = 1
 
-start_time = 25 # simulation seconds
+start_time = 30 # simulation seconds
 end_time = start_time + 60*4 # only for testing purposes, this 1 should be a 4 for 4 sim minutes
 time_seconds = 0
 run_once = 0
@@ -42,11 +42,10 @@ def callback_time(data):
 		control_pub.publish("start")
 
 	# end competition
-	if time_seconds == end_time and run_once == 0:
+	if time_seconds == end_time and run_once == 1:
 		#angular_vel = 0
 		control_pub.publish("stop")
 		license_publishing("-1","XR58") # the license plate digits are filler, don't mean anything
-		run_once = 1
 
 	# print speed every second
 	if time_seconds != prev_time:

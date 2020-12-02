@@ -80,6 +80,10 @@ sample_set = []
 
 stall_number = ""
 
+stationary_count = 0
+count = 2
+num_times_inched_forward = 0
+
 def get_center(img):
 	y_val = 700
 	height, width, shape = img.shape #720, 1280, 3
@@ -289,6 +293,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 	global license_plate_recognized
 	global stall_recognized
 	global plate_not_published
+	global num_times_inched_forward
 
 	TIME_LIMIT = 1.5
 
@@ -313,6 +318,7 @@ def detect_blue_car(original_image,blue_detected_previous):
 		license_plate_recognized = False
 		stall_recognized = False
 		plate_not_published = True
+		num_times_inched_forward = 0
 
 	sub_img = hsv_img[STARTING_Y_PIXEL][:][:]
 	height, width, shape = hsv_img.shape #720, 1280, 3
@@ -457,8 +463,6 @@ def callback_control(cmd):
 	else:
 		print("skipped")
 
-stationary_count = 0
-count = 2
 def callback_image(img):
 
 	global control_robot
@@ -471,6 +475,7 @@ def callback_image(img):
 	global license_plate_location
 	global count
 	global stationary_count
+	global num_times_inched_forward
 	global predicted_plate_number
 	global stall_number
 	#print(control_robot)
@@ -516,9 +521,13 @@ def callback_image(img):
 				else:
 					move.linear.x = 0
 					stationary_count+=1
-					if stationary_count > 50:
-						move.linear.x = 0.05
-						stationary_count = 0
+					if stationary_count > 40:
+						move.linear.x = 0.1
+						num_times_inched_forward+=1
+						if num_times_inched_forward > 4:
+							move.linear.x = nominal_speed
+						else:
+							stationary_count = 0
 					blue_car_pub.publish("blue car detected")
 			else:
 				midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road			
@@ -565,7 +574,7 @@ def callback_plate_NN(plate):
 	#predicted_plate_number = plate_number
 	#license_plate_recognized = True
 	#stash the license plates and wait until the stash hits 20. once it hits 20, then take
-	if num_samples < 20:
+	if num_samples < 15:
 		sample_set.append(plate_number)
 		print(sample_set)
 		#license_plate_recognized = False
