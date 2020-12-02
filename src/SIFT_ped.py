@@ -14,8 +14,8 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 
-FALSE = 0
-TRUE = 1
+False = 0
+True = 1
 
 image_back = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/back_semi_white.jpg"
 image_front = "/home/fizzer/ros_ws/src/my_controller/pictures/cropped_close_ups/front_semi_white.jpg"
@@ -28,6 +28,7 @@ positive_match = 25 # 6
 detect_ped_list = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 detect_thresh = 8
 count = 0
+pedestrian_detected = False
 
 # Cropping variables
 X1 = 550
@@ -43,7 +44,7 @@ def cropImage(width_start, width_end, height_start, height_end, frame):
 	return frame[height_start:height_end,width_start:width_end,0:3]
 
 def pedestrian_ID(image_path, title, robot_frame, dist_scale):
-	match = FALSE
+	match = False
 	sift = cv2.xfeatures2d.SIFT_create()
 	frame = cropImage(X1,X2,Y1,Y2,robot_frame)
 
@@ -62,28 +63,29 @@ def pedestrian_ID(image_path, title, robot_frame, dist_scale):
 
 	good_points = []
 	for m, n in matches:
-		# to avoid many false results, take descriptors that have short distances between them
+		# to avoid many False results, take descriptors that have short distances between them
 		# play with the dist_scale constant: 0.6, 0.7, 0.8 - potential values
 		if m.distance < dist_scale * n.distance:
 			good_points.append(m)
 
 	img_matches = cv2.drawMatches(img, kp_image, frame, kp_frame, good_points, frame)
-	cv2.imshow("Matches", img_matches)
-	cv2.waitKey(1)
+	#cv2.imshow("Matches", img_matches)
+	#cv2.waitKey(1)
 
 	# pedestrian_ID - the line of *'s are arbitrary, just a quick check that we've identified the pedestrian in the terminal
 	if len(good_points) > positive_match:
 		#print(title + ": ******************* pedestrian_ID: " + str(len(good_points)))
-		match = TRUE		
+		match = True		
 	else:
 		#print(title + ": no pedestrian_ID: " + str(len(good_points)))
-		match = FALSE
+		match = False
 
 	return match
 
 def callback_image(data):
 	global detect_ped_list
 	global count
+	global pedestrian_detected
 	cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
 	#frame = cropImage(X1,X2,Y1,Y2,cv_image)
 
@@ -96,22 +98,36 @@ def callback_image(data):
 		count = count + 1
 		detect_ped_list = []
 	else:
-		detect_ped_list.append(FALSE)
+		detect_ped_list.append(False)
 
 	if len(detect_ped_list) < detect_thresh:
-		print("***********************detected!")
+		print("***********************pedestrian detected!")
+		pedestrian_detected = True
 	else:
-		print("not detected")
+		print("pedestrian not detected")
+		pedestrian_detected = False
 
-	#print("back: " + str(matches1))
-	#print("front: " + str(matches2))
+def callback_red_line(detect):
+	global pedestrian_detected
+	status = detect.data
+
+	if status == "True":
+		# we have detected a red line
+		# wait a bit before publishing the message to rush through the crosswalk
+		time.sleep(2)
+		ped_detect_pub.publish("True")
+	else:
+		# have not detected the red line
+		ped_detect_pub.publish("False")
 
 # ROS setup stuff below
 rospy.init_node('comp_image_read_node')
 bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
+ped_detect_pub = rospy.Publisher('/pedestrian',String,queue_size = 1)
 move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image) 
+red_line_sub = rospy.Subscriber('/red_line',String,callback_red_line) 
 rospy.spin()
 
 '''
