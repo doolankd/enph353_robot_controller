@@ -60,6 +60,9 @@ blue_car_detected = False
 blue_running_time = 0.0
 first_pass = True
 
+time_since_red_line = 0.0
+red_line_detected = False
+
 #license_plate_NN._make_predict_function()
 sess1 = tf.Session()
 graph1 = tf.get_default_graph()
@@ -278,6 +281,29 @@ def follow_line(midpoint_road,road_detected):
 
 	return driving_straight
 
+def detect_red_line(original_image):
+
+	Y_LEVEL = 700
+
+	lower_red = np.array([0,50,50])
+	upper_red = np.array([10,255,255])
+
+	hsv_img = cv2.cvtColor(original_image, cv2.COLOR_BGR2HSV)
+	height, width, shape = hsv_img.shape
+	sub_img = hsv_img[Y_LEVEL][:][:]
+
+
+	h = sub_img[int(width/2)][0]
+	s = sub_img[int(width/2)][1]
+	v = sub_img[int(width/2)][2]
+
+	if (h >= lower_red[0] and h <= upper_red[0] and
+		s >= lower_red[1] and v >= lower_red[2]):
+		red_line_detected = True
+	else:
+		red_line_detected = False
+	return red_line_detected
+
 
 def detect_blue_car(original_image,blue_detected_previous):
 	#sub_img = hsv_img[400][:][:]
@@ -478,6 +504,8 @@ def callback_image(img):
 	global num_times_inched_forward
 	global predicted_plate_number
 	global stall_number
+	global time_since_red_line
+	global red_line_detected
 	#print(control_robot)
 
 	if control_robot:
@@ -488,11 +516,13 @@ def callback_image(img):
 			#**************************************************
 			move.angular.z = 0.0
 			move.linear.x = 0.3
+			time_since_red_line = rospy.get_time()
 		elif rospy.get_time() - comp_start_time < 2.0:
 
 
 			move.angular.z = 1
 			move.linear.x = 0
+			time_since_red_line = rospy.get_time()
 			#gets robot to turn left once competition starts
 
 		#this should only execute once competition starts
@@ -508,6 +538,14 @@ def callback_image(img):
 			#
 
 			cv_image = bridge.imgmsg_to_cv2(img, "bgr8")#image robot sees
+
+			if rospy.get_time() - time_since_red_line > 0.1:
+				red_line_detected = detect_red_line(cv_image)
+				print("made it in here")
+				print(red_line_detected)
+				red_line_pub.publish("True")
+				time_since_red_line = rospy.get_time()
+
 			#print(blue_car_detected)
 			if blue_car_detected:
 				move.angular.z = 0
@@ -521,14 +559,19 @@ def callback_image(img):
 				else:
 					move.linear.x = 0
 					stationary_count+=1
-					if stationary_count > 40:
+					if stationary_count > 50:
 						move.linear.x = 0.1
 						num_times_inched_forward+=1
-						if num_times_inched_forward > 4:
+						if num_times_inched_forward > 5:
 							move.linear.x = nominal_speed
 						else:
 							stationary_count = 0
 					blue_car_pub.publish("blue car detected")
+
+			elif red_line_detected:
+				move.angular.z = 0
+				move.linear.x = 0
+
 			else:
 				midpoint_road, road_detected = get_center(img=cv_image) #gets index of center of road			
 
@@ -539,8 +582,8 @@ def callback_image(img):
 			else:
 				blue_car_detected = False
 
-		prev_control = True
-		velocity_pub.publish(move)
+		#prev_control = True
+		#velocity_pub.publish(move)
 	else:
 		#this should only execute once competition ends... for now
 		move.angular.z = 0
@@ -602,15 +645,29 @@ def callback_stall_NN(guess):
 # roslaunch my_controller run_comp.launch
 # ./score_tracker.py
 
+def callback_crosswalk(safe_to_cross):
+	safe_to_cross = str(safe_to_cross.data)
+	if safe_to_cross == "True":
+		move.angular.z = 0
+		move.linear.x = 0.5
+		velocity_pub.publish(move)
+		time.sleep(1)
+	else:
+		move.angular.z = 0
+		move.linear.x = 0
+		velocity_pub.publish(move)
+
 rospy.init_node('control_node')
 bridge = CvBridge()
 velocity_pub = rospy.Publisher('/R1/cmd_vel',Twist,queue_size = 1)
 blue_car_pub = rospy.Publisher('/blue_car_detection',String,queue_size = 1)
+plate_to_score_tracker_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
+red_line_pub = rospy.Publisher('/red_line',String,queue_size = 1)
 move = Twist()
 image_sub = rospy.Subscriber('/R1/pi_camera/image_raw',Image,callback_image)  #/rrbot/camera1/image_raw', Image,callback_image)
 control_sub = rospy.Subscriber('/control',String,callback_control)
 license_plate_sub = rospy.Subscriber('/sim_license_plates',Image,callback_plate_NN)
-plate_to_score_tracker_pub = rospy.Publisher('/license_plate',String,queue_size = 1)
+pedestrian_sub = rospy.Subscriber('/pedestrian',String,callback_crosswalk)
 #license_plate_sub = rospy.Subscriber('/sim_stall',Image,callback_stall_NN)
 stall_sub = rospy.Subscriber('/sim_stall',String,callback_stall_NN)
 rospy.spin()
