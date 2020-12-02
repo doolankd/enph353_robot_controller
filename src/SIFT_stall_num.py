@@ -78,6 +78,7 @@ found_match = False
 
 #detecting if blue car seen
 blue_car_detected = False
+predict_array = np.array([0,0,0,0,0,0])
 
 frame_stall_trace = None
 
@@ -283,14 +284,31 @@ def callback_image(data):
 			predicted_character = map_stall_prediction_to_char(y_predict)
 			#print("predicted stall: " + str(predicted_character))
 
-			if str(predicted_character) == "7" or str(predicted_character) == "8":
+			if str(predicted_character) == "7.0" or str(predicted_character) == "8.0":
 				# we got a bad reading, 
 				blue_car_detected = "blue car detected"
 			else:
-				# publish the predicted character
-				stall_img_pub.publish(str(predicted_character))
-				blue_car_detected = False
-				time.sleep(0.05)
+				predicted_character = int(predicted_character)
+				predict_array[predicted_character-1] = predict_array[predicted_character-1] + 1
+				# max returns the max value of the array
+				if np.max(predict_array) > 4:
+					# publish the predicted character
+					max_char = np.max(predict_array)
+					i = 0
+					for term in predict_array:
+						if term == max_char:
+							large_index = i
+						i = i + 1
+					character = classes_stall[large_index]
+
+					stall_img_pub.publish(str(character))
+					#time.sleep(0.05)
+					blue_car_detected = False
+
+					for j in range(0,6):
+						predict_array[j] = 0
+				else:
+					blue_car_detected = "blue car detected"
 			
 			#stall_num = bridge.cv2_to_imgmsg(frame_stall_trace, encoding="passthrough")
 			# publishes a cropped, hsv image 
