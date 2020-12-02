@@ -121,7 +121,7 @@ def callback_red_line(detect):
 		if pedestrian_detected:
 			# we have detected a red line
 			# wait a bit before publishing the message to rush through the crosswalk
-			time.sleep(3.5)
+			time.sleep(4.5)
 			#print("publishing")
 			ped_detect_pub.publish("True")
 	else:

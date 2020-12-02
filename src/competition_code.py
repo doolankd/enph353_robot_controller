@@ -44,6 +44,7 @@ def callback_time(data):
 	# end competition
 	if time_seconds == end_time and run_once == 1:
 		#angular_vel = 0
+		run_once = 2
 		control_pub.publish("stop")
 		license_publishing("-1","XR58") # the license plate digits are filler, don't mean anything
 
