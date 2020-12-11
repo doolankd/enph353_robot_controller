@@ -18,7 +18,7 @@ FALSE = 0
 TRUE = 1
 
 start_time = 30 # simulation seconds
-end_time = 215 # only for testing purposes, this 1 should be a 4 for 4 sim minutes
+end_time = 230 # only for testing purposes, this 1 should be a 4 for 4 sim minutes
 time_seconds = 0
 run_once = 0
 angular_vel = 0

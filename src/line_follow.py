@@ -650,8 +650,11 @@ def callback_plate_NN(plate):
 					predicted_character = 'Z'
 				elif predicted_character == '6':
 					predicted_character = 'G'
+				elif predicted_character == '8':
+					predicted_character = 'B'
 		elif j == 2 or j == 3:
 			if predicted_character in letters:
+				#print('in here')
 				if predicted_character == 'O':
 					predicted_character = '0'
 				elif predicted_character == 'Q':
@@ -660,12 +663,16 @@ def callback_plate_NN(plate):
 					predicted_character = '0'
 				elif predicted_character == 'Z':
 					predicted_character = '2'
+				elif predicted_character == 'T':
+					predicted_character = '2'
 				elif predicted_character == 'I':
 					predicted_character = '1'
 				elif predicted_character == 'J':
 					predicted_character = '1'
 				elif predicted_character == 'G':
 					predicted_character = '6'
+				elif predicted_character == 'L':
+					predicted_character = '1'
 
 
 		plate_number += str(predicted_character)
@@ -673,7 +680,7 @@ def callback_plate_NN(plate):
 	#predicted_plate_number = plate_number
 	#license_plate_recognized = True
 	#stash the license plates and wait until the stash hits 20. once it hits 20, then take
-	if num_samples < 31:
+	if num_samples < 41:
 		sample_set.append(plate_number)
 		print(sample_set)
 		#license_plate_recognized = False
